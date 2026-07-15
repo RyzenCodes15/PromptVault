@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.db.session import get_db_session
 from app.models.user import User
-from app.schemas.prompt import PromptCreate, PromptRead, PaginatedPromptRead
+from app.schemas.prompt import PromptCreate, PromptUpdate, PromptRead, PaginatedPromptRead
 from app.services.prompt_service import PromptService
 
 
@@ -52,6 +52,34 @@ async def search_prompts(
     }
 
 
+@router.get("/me", response_model=PaginatedPromptRead)
+async def get_my_prompts(
+    q: Optional[str] = Query(None, description="Search query"),
+    category_id: Optional[uuid.UUID] = Query(None, description="Filter by category ID"),
+    status: Optional[str] = Query(None, description="Filter by status"),
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(12, ge=1, le=50, description="Items per page"),
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """Get prompts for the authenticated seller."""
+    service = PromptService(session)
+    items, total = await service.get_seller_prompts(
+        user=current_user,
+        search_query=q,
+        category_id=category_id,
+        status_filter=status,
+        page=page,
+        limit=limit,
+    )
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "limit": limit,
+    }
+
+
 @router.get("/{prompt_id}", response_model=PromptRead)
 async def get_prompt(
     prompt_id: uuid.UUID,
@@ -60,3 +88,26 @@ async def get_prompt(
     """Get a prompt by ID."""
     service = PromptService(session)
     return await service.get_prompt(prompt_id)
+
+
+@router.put("/{prompt_id}", response_model=PromptRead)
+async def update_prompt(
+    prompt_id: uuid.UUID,
+    prompt_in: PromptUpdate,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """Update a prompt (Seller only)."""
+    service = PromptService(session)
+    return await service.update_prompt(prompt_id, current_user, prompt_in)
+
+
+@router.delete("/{prompt_id}", status_code=204)
+async def delete_prompt(
+    prompt_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """Hard delete a prompt (Seller only)."""
+    service = PromptService(session)
+    await service.delete_prompt(prompt_id, current_user)

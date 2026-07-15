@@ -53,3 +53,16 @@ export function useCreatePrompt() {
     },
   });
 }
+
+export function useUpdatePrompt(id: string) {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (data: Partial<Prompt>) => api.put(`/api/prompts/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["prompt", id] });
+      queryClient.invalidateQueries({ queryKey: ["seller-prompts"] });
+      queryClient.invalidateQueries({ queryKey: ["seller-prompts-overview"] });
+    },
+  });
+}

@@ -55,6 +55,10 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(data),
     }),
+  delete: (endpoint: string) =>
+    fetchWithAuth(endpoint, {
+      method: "DELETE",
+    }),
   postFormData: async (endpoint: string, formData: FormData) => {
     const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
     const headers = new Headers();

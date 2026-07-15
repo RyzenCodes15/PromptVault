@@ -84,3 +84,68 @@ class PromptRepository:
         items = list(items_result.scalars().all())
 
         return items, total
+
+    async def get_seller_prompts(
+        self,
+        seller_id: uuid.UUID,
+        search_query: Optional[str] = None,
+        category_id: Optional[uuid.UUID] = None,
+        status: Optional[PromptStatus] = None,
+        page: int = 1,
+        limit: int = 12,
+    ) -> Tuple[List[Prompt], int]:
+        """Get prompts for a seller (includes all non-deleted statuses unless specified)."""
+        base_stmt = select(Prompt).where(Prompt.seller_id == seller_id)
+        
+        if status:
+            base_stmt = base_stmt.where(Prompt.status == status)
+        
+        if category_id:
+            base_stmt = base_stmt.where(Prompt.category_id == category_id)
+            
+        if search_query:
+            search_term = f"%{search_query}%"
+            base_stmt = base_stmt.where(
+                or_(
+                    Prompt.title.ilike(search_term),
+                    Prompt.short_description.ilike(search_term),
+                )
+            )
+
+        # Count total
+        count_stmt = select(func.count()).select_from(base_stmt.subquery())
+        count_result = await self.session.execute(count_stmt)
+        total = count_result.scalar_one()
+
+        # Get paginated items
+        items_stmt = (
+            base_stmt
+            .options(selectinload(Prompt.seller), selectinload(Prompt.category))
+            .order_by(desc(Prompt.created_at))
+            .offset((page - 1) * limit)
+            .limit(limit)
+        )
+        
+        items_result = await self.session.execute(items_stmt)
+        items = list(items_result.scalars().all())
+
+        return items, total
+
+    async def update(self, prompt: Prompt) -> Prompt:
+        """Update a prompt."""
+        self.session.add(prompt)
+        await self.session.commit()
+        await self.session.refresh(prompt)
+        # load relationships
+        stmt = (
+            select(Prompt)
+            .options(selectinload(Prompt.seller), selectinload(Prompt.category))
+            .where(Prompt.id == prompt.id)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one()
+
+    async def delete(self, prompt: Prompt) -> None:
+        """Hard delete a prompt."""
+        await self.session.delete(prompt)
+        await self.session.commit()

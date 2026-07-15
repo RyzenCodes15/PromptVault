@@ -1,21 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-
 import { useAuth } from "@/providers/auth-provider";
-import { useCategories, useCreatePrompt } from "@/hooks/use-marketplace";
+import { useCategories, usePrompt, useUpdatePrompt } from "@/hooks/use-marketplace";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, AlertCircle, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 
-const createPromptSchema = z.object({
+const editPromptSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters").max(255),
   short_description: z.string().min(10, "Short description must be at least 10 characters").max(500),
   full_description: z.string().min(10, "Full description must be at least 10 characters"),
@@ -23,25 +23,29 @@ const createPromptSchema = z.object({
   price: z.number({ message: "Price must be a valid number" }).positive("Price must be a positive number"),
   cover_image_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   prompt_file_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  status: z.enum(["active", "inactive", "deleted"]),
 });
 
-type CreatePromptValues = z.infer<typeof createPromptSchema>;
+type EditPromptValues = z.infer<typeof editPromptSchema>;
 
-export default function CreatePromptPage() {
+export default function EditListingPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const { user } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
   const { data: categories, isLoading: categoriesLoading } = useCategories();
-  const createPromptMutation = useCreatePrompt();
+  const { data: prompt, isLoading: promptLoading } = usePrompt(params.id);
+  const updatePromptMutation = useUpdatePrompt(params.id);
 
   const {
     register,
     handleSubmit,
     setValue,
+    watch,
+    reset,
     formState: { errors, isSubmitting },
-  } = useForm<CreatePromptValues>({
-    resolver: zodResolver(createPromptSchema),
+  } = useForm<EditPromptValues>({
+    resolver: zodResolver(editPromptSchema),
     defaultValues: {
       title: "",
       short_description: "",
@@ -50,46 +54,69 @@ export default function CreatePromptPage() {
       price: 0,
       cover_image_url: "",
       prompt_file_url: "",
+      status: "inactive",
     },
   });
 
+  useEffect(() => {
+    if (prompt) {
+      reset({
+        title: prompt.title,
+        short_description: prompt.short_description,
+        full_description: prompt.full_description,
+        category_id: prompt.category_id,
+        price: prompt.price,
+        cover_image_url: prompt.cover_image_url || "",
+        prompt_file_url: prompt.prompt_file_url || "",
+        status: prompt.status,
+      });
+    }
+  }, [prompt, reset]);
+
   if (!user) return null;
 
-  // Protect route: only sellers can create prompts
-  if (user.role !== "seller") {
+  if (promptLoading) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <Loader2 className="size-8 animate-spin text-vault-gold" />
+      </div>
+    );
+  }
+
+  if (!prompt || prompt.seller_id !== user.id) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <AlertCircle className="size-16 text-vault-error mb-6" />
-        <h1 className="font-heading text-2xl font-bold tracking-tight">Access Denied</h1>
+        <h1 className="font-heading text-2xl font-bold tracking-tight">Listing Not Found</h1>
         <p className="mt-2 text-muted-foreground max-w-md">
-          Only registered sellers can create prompts in the marketplace.
+          The listing you are trying to edit does not exist or you don&apos;t have permission.
         </p>
-        <Link href="/">
+        <Link href="/dashboard/listings">
           <Button className="mt-8 bg-vault-gold text-vault-surface hover:bg-vault-gold/90">
-            Back to Marketplace
+            Back to Listings
           </Button>
         </Link>
       </div>
     );
   }
 
-  const onSubmit = async (data: CreatePromptValues) => {
+  const onSubmit = async (data: EditPromptValues) => {
     setError(null);
     try {
-      // Convert empty strings to undefined to match Optional fields in API
       const payload = {
         ...data,
         cover_image_url: data.cover_image_url || undefined,
         prompt_file_url: data.prompt_file_url || undefined,
       };
       
-      const newPrompt = await createPromptMutation.mutateAsync(payload);
-      router.push(`/prompt/${newPrompt.id}`);
+      await updatePromptMutation.mutateAsync(payload);
+      toast.success("Listing updated successfully");
+      router.push("/dashboard/listings");
     } catch (err: unknown) {
       if (err instanceof Error) {
-        setError(err.message || "Failed to create prompt. Please try again.");
+        setError(err.message || "Failed to update prompt. Please try again.");
       } else {
-        setError("Failed to create prompt. Please try again.");
+        setError("Failed to update prompt. Please try again.");
       }
     }
   };
@@ -97,17 +124,17 @@ export default function CreatePromptPage() {
   return (
     <div className="w-full max-w-3xl">
       <Link
-        href="/dashboard"
+        href="/dashboard/listings"
         className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
       >
         <ArrowLeft className="size-4" />
-        Back to Dashboard
+        Back to Listings
       </Link>
       <div className="space-y-8">
         <div>
-          <h1 className="font-heading text-3xl font-bold tracking-tight">Create Listing</h1>
+          <h1 className="font-heading text-3xl font-bold tracking-tight">Edit Listing</h1>
           <p className="mt-2 text-muted-foreground">
-            Sell your prompt to thousands of creators on PromptVault.
+            Update your prompt listing details.
           </p>
         </div>
 
@@ -159,6 +186,7 @@ export default function CreatePromptPage() {
                   <Select
                     disabled={categoriesLoading}
                     onValueChange={(value) => setValue("category_id", value as string)}
+                    value={watch("category_id")}
                   >
                     <SelectTrigger className={errors.category_id ? "border-red-500" : ""}>
                       <SelectValue placeholder="Select a category" />
@@ -191,6 +219,28 @@ export default function CreatePromptPage() {
                   />
                   {errors.price && (
                     <p className="text-xs text-red-500">{errors.price.message}</p>
+                  )}
+                </div>
+                
+                <div className="space-y-2 md:col-span-2">
+                  <label htmlFor="status" className="text-sm font-medium leading-none">
+                    Status
+                  </label>
+                  <Select
+                    onValueChange={(value) => setValue("status", value as "active" | "inactive" | "deleted")}
+                    value={watch("status")}
+                  >
+                    <SelectTrigger className={errors.status ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Select a status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="inactive">Draft (Hidden)</SelectItem>
+                      <SelectItem value="active">Published (Visible)</SelectItem>
+                      <SelectItem value="deleted">Archived</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {errors.status && (
+                    <p className="text-xs text-red-500">{errors.status.message}</p>
                   )}
                 </div>
               </div>
@@ -249,7 +299,7 @@ export default function CreatePromptPage() {
             </div>
 
             <div className="flex items-center justify-end gap-4 pt-6 border-t border-border">
-              <Link href="/dashboard">
+              <Link href="/dashboard/listings">
                 <Button variant="outline" type="button">
                   Cancel
                 </Button>
@@ -260,7 +310,7 @@ export default function CreatePromptPage() {
                 className="bg-vault-gold text-vault-surface hover:bg-vault-gold/90 min-w-[120px]"
               >
                 {isSubmitting ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
-                {isSubmitting ? "Creating..." : "Create Prompt"}
+                {isSubmitting ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           </form>

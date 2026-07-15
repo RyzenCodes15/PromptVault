@@ -67,3 +67,71 @@ class PromptService:
             page=page,
             limit=limit,
         )
+
+    async def get_seller_prompts(
+        self,
+        user: User,
+        search_query: Optional[str] = None,
+        category_id: Optional[uuid.UUID] = None,
+        status_filter: Optional[str] = None,
+        page: int = 1,
+        limit: int = 12,
+    ) -> Tuple[List[Prompt], int]:
+        """Get prompts for a seller."""
+        if user.role != UserRole.seller:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only sellers can access this endpoint.",
+            )
+            
+        page = max(1, page)
+        limit = min(50, max(1, limit))
+        
+        return await self.repository.get_seller_prompts(
+            seller_id=user.id,
+            search_query=search_query,
+            category_id=category_id,
+            status=status_filter,
+            page=page,
+            limit=limit,
+        )
+
+    async def update_prompt(
+        self, prompt_id: uuid.UUID, user: User, prompt_in: PromptUpdate
+    ) -> Prompt:
+        """Update a prompt (must be owner)."""
+        prompt = await self.repository.get_by_id(prompt_id)
+        if not prompt:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Prompt not found.",
+            )
+            
+        if prompt.seller_id != user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not enough permissions.",
+            )
+
+        update_data = prompt_in.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(prompt, field, value)
+
+        return await self.repository.update(prompt)
+
+    async def delete_prompt(self, prompt_id: uuid.UUID, user: User) -> None:
+        """Hard delete a prompt (must be owner)."""
+        prompt = await self.repository.get_by_id(prompt_id)
+        if not prompt:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Prompt not found.",
+            )
+            
+        if prompt.seller_id != user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not enough permissions.",
+            )
+
+        await self.repository.delete(prompt)
