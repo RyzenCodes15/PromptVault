@@ -8,13 +8,14 @@ from fastapi import HTTPException, status
 from app.models.prompt import Prompt
 from app.models.user import User, UserRole
 from app.repositories.prompt_repository import PromptRepository
-from app.schemas.prompt import PromptCreate, PromptUpdate
+from app.schemas.prompt import PromptCreate, PromptRead, PromptUpdate
 
 
 class PromptService:
     """Service for prompt operations."""
 
     def __init__(self, session: AsyncSession):
+        self.session = session
         self.repository = PromptRepository(session)
 
     async def create_prompt(self, user: User, prompt_data: PromptCreate) -> Prompt:
@@ -33,18 +34,25 @@ class PromptService:
             full_description=prompt_data.full_description,
             price=prompt_data.price,
             cover_image_url=prompt_data.cover_image_url,
-            prompt_file_url=prompt_data.prompt_file_url,
+            prompt_text=prompt_data.prompt_text,
         )
         return await self.repository.create(prompt)
 
-    async def get_prompt(self, prompt_id: uuid.UUID) -> Prompt:
-        """Get a prompt by ID."""
+    async def get_prompt(self, prompt_id: uuid.UUID, user: Optional[User] = None) -> Prompt | PromptRead:
+        """Get a prompt by ID. Redacts prompt_text if user is not the seller."""
         prompt = await self.repository.get_by_id(prompt_id)
         if not prompt:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Prompt not found.",
             )
+        
+        # Redact prompt_text if the user is not the seller (simulating purchase rules)
+        if not user or prompt.seller_id != user.id:
+            prompt_read = PromptRead.model_validate(prompt)
+            prompt_read.prompt_text = None
+            return prompt_read
+            
         return prompt
 
     async def search_prompts(
@@ -54,19 +62,28 @@ class PromptService:
         seller_id: Optional[uuid.UUID] = None,
         page: int = 1,
         limit: int = 12,
-    ) -> Tuple[List[Prompt], int]:
+    ) -> Tuple[List[PromptRead], int]:
         """Search prompts with pagination."""
         # Ensure page is at least 1, limit is reasonable
         page = max(1, page)
         limit = min(50, max(1, limit))
         
-        return await self.repository.search(
+        prompts, total = await self.repository.search(
             search_query=search_query,
             category_id=category_id,
             seller_id=seller_id,
             page=page,
             limit=limit,
         )
+        
+        # Always redact prompt_text in public search results using PromptRead models
+        prompt_reads = []
+        for prompt in prompts:
+            pr = PromptRead.model_validate(prompt)
+            pr.prompt_text = None
+            prompt_reads.append(pr)
+            
+        return prompt_reads, total
 
     async def get_seller_prompts(
         self,

@@ -47,3 +47,7 @@ coverage/
 
 # Alembic
 backend/alembic/versions/__pycache__/
+
+# Uploads (dev fallback)
+backend/uploads/*
+!backend/uploads/.gitkeep

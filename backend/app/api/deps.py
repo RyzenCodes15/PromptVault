@@ -63,6 +63,26 @@ async def get_current_user(
     return user
 
 
+async def get_optional_user(
+    credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
+    user_repo: UserRepository = Depends(get_user_repository),
+) -> User | None:
+    """Dependency to optionally get the current authenticated user."""
+    if not credentials:
+        return None
+        
+    token = credentials.credentials
+    try:
+        payload = decode_token(token)
+        token_data = TokenPayload(**payload)
+        if token_data.type != "access":
+            return None
+    except Exception:
+        return None
+
+    return await user_repo.get_by_id(token_data.sub)
+
+
 class RoleChecker:
     """Dependency class to check for required roles."""
 

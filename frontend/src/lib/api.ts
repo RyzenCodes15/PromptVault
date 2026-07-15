@@ -40,7 +40,19 @@ async function fetchWithAuth(
     throw new ApiError(response.status, errorData);
   }
 
-  return response.json();
+  if (response.status === 204) {
+    return null;
+  }
+
+  const text = await response.text();
+  if (!text) {
+    return null;
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
 }
 
 export const api = {

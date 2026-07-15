@@ -1,17 +1,40 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { usePrompt, usePrompts } from "@/hooks/use-marketplace";
 import { PromptCard } from "@/components/ui/prompt-card";
-import { Vault, User as UserIcon, Loader2, ArrowLeft, Calendar, Tag } from "lucide-react";
+import { Vault, User as UserIcon, Loader2, ArrowLeft, Calendar, Tag, Lock, Unlock, Copy, Download, Check } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 export default function PromptDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { data: prompt, isLoading } = usePrompt(id);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    if (prompt?.prompt_text) {
+      navigator.clipboard.writeText(prompt.prompt_text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleDownload = () => {
+    if (prompt?.prompt_text) {
+      const blob = new Blob([prompt.prompt_text], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${prompt.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_prompt.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  };
 
   // Fetch related prompts (same category)
   const { data: relatedData } = usePrompts({
@@ -89,6 +112,53 @@ export default function PromptDetailsPage({ params }: { params: Promise<{ id: st
                 </h2>
                 <div className="mt-6 prose prose-invert prose-p:text-muted-foreground prose-a:text-vault-gold max-w-none">
                   <p className="text-lg leading-relaxed">{prompt.full_description}</p>
+                </div>
+              </div>
+
+              {/* Unlocked Prompt Section */}
+              <div className="mt-8 rounded-2xl border border-border bg-vault-elevated overflow-hidden">
+                <div className="flex items-center justify-between border-b border-border bg-muted/30 px-6 py-4">
+                  <div className="flex items-center gap-2">
+                    {prompt.prompt_text ? (
+                      <>
+                        <Unlock className="size-5 text-vault-gold" />
+                        <h2 className="font-heading text-lg font-semibold text-vault-gold">Unlocked Prompt</h2>
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="size-5 text-muted-foreground" />
+                        <h2 className="font-heading text-lg font-semibold text-muted-foreground">Prompt Locked</h2>
+                      </>
+                    )}
+                  </div>
+                  
+                  {prompt.prompt_text && (
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={handleCopy} className="gap-2">
+                        {copied ? <Check className="size-4 text-green-500" /> : <Copy className="size-4" />}
+                        {copied ? "Copied" : "Copy"}
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={handleDownload} className="gap-2">
+                        <Download className="size-4" />
+                        Download
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="p-6">
+                  {prompt.prompt_text ? (
+                    <div className="relative rounded-lg bg-black/40 p-4 border border-border/50">
+                      <pre className="whitespace-pre-wrap text-sm text-foreground/90 font-mono">
+                        {prompt.prompt_text}
+                      </pre>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+                      <Lock className="size-12 mb-4 opacity-20" />
+                      <p>Purchase this prompt to unlock the prompt text and instructions.</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

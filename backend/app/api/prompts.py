@@ -2,20 +2,24 @@
 
 import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_optional_user
+from app.core.config import get_settings
 from app.db.session import get_db_session
+from app.integrations.cloudinary import CloudinaryService
 from app.models.user import User
 from app.schemas.prompt import PromptCreate, PromptUpdate, PromptRead, PaginatedPromptRead
 from app.services.prompt_service import PromptService
+
+settings = get_settings()
 
 
 router = APIRouter()
 
 
-@router.post("", response_model=PromptRead)
+@router.post("", response_model=PromptRead, status_code=status.HTTP_201_CREATED)
 async def create_prompt(
     prompt_in: PromptCreate,
     current_user: User = Depends(get_current_user),
@@ -84,10 +88,11 @@ async def get_my_prompts(
 async def get_prompt(
     prompt_id: uuid.UUID,
     session: AsyncSession = Depends(get_db_session),
+    current_user: User | None = Depends(get_optional_user),
 ):
     """Get a prompt by ID."""
     service = PromptService(session)
-    return await service.get_prompt(prompt_id)
+    return await service.get_prompt(prompt_id, current_user)
 
 
 @router.put("/{prompt_id}", response_model=PromptRead)
@@ -111,3 +116,71 @@ async def delete_prompt(
     """Hard delete a prompt (Seller only)."""
     service = PromptService(session)
     await service.delete_prompt(prompt_id, current_user)
+
+
+@router.post("/upload-image")
+async def upload_prompt_image(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    """Upload a cover image for a prompt."""
+    if current_user.role != "seller":
+        raise HTTPException(status_code=403, detail="Only sellers can upload prompt images.")
+
+    contents = await file.read()
+
+    # Check if Cloudinary is properly configured
+    cloud_name = settings.cloudinary_cloud_name
+    api_key = settings.cloudinary_api_key
+    api_secret = settings.cloudinary_api_secret
+
+    has_cloudinary = (
+        cloud_name
+        and api_key
+        and api_secret
+        and not cloud_name.startswith("YOUR_")
+        and not api_key.startswith("YOUR_")
+        and not api_secret.startswith("YOUR_")
+    )
+
+    if has_cloudinary:
+        # Use Cloudinary
+        cloudinary_service = CloudinaryService(
+            cloud_name=cloud_name,
+            api_key=api_key,
+            api_secret=api_secret,
+        )
+        try:
+            result = await cloudinary_service.upload_image(contents, folder="prompts")
+            return {"url": result["secure_url"]}
+        except Exception as e:
+            raise HTTPException(
+                status_code=500, detail=f"Failed to upload image: {str(e)}"
+            )
+    else:
+        # Local filesystem fallback (development)
+        import uuid as _uuid
+        from pathlib import Path
+
+        uploads_dir = Path(__file__).resolve().parent.parent.parent / "uploads" / "prompts"
+        uploads_dir.mkdir(parents=True, exist_ok=True)
+
+        # Determine file extension
+        ext = ".jpg"
+        if file.content_type:
+            ext_map = {
+                "image/png": ".png",
+                "image/jpeg": ".jpg",
+                "image/webp": ".webp",
+                "image/gif": ".gif",
+            }
+            ext = ext_map.get(file.content_type, ".jpg")
+
+        filename = f"{_uuid.uuid4().hex}{ext}"
+        file_path = uploads_dir / filename
+        file_path.write_bytes(contents)
+
+        # Return URL served by the backend
+        backend_url = settings.backend_url.rstrip("/")
+        return {"url": f"{backend_url}/api/uploads/prompts/{filename}"}
+

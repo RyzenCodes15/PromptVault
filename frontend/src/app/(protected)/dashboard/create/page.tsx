@@ -1,19 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, Loader2 } from "lucide-react";
 
 import { useAuth } from "@/providers/auth-provider";
 import { useCategories, useCreatePrompt } from "@/hooks/use-marketplace";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, AlertCircle, ArrowLeft } from "lucide-react";
-import Link from "next/link";
 
 const createPromptSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters").max(255),
@@ -22,14 +22,15 @@ const createPromptSchema = z.object({
   category_id: z.string().uuid("Please select a category"),
   price: z.number({ message: "Price must be a valid number" }).positive("Price must be a positive number"),
   cover_image_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
-  prompt_file_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  prompt_text: z.string().min(1, "Prompt text is required"),
 });
 
 type CreatePromptValues = z.infer<typeof createPromptSchema>;
 
-export default function CreatePromptPage() {
+export default function CreateListingPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
 
   const { data: categories, isLoading: categoriesLoading } = useCategories();
@@ -39,6 +40,7 @@ export default function CreatePromptPage() {
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<CreatePromptValues>({
     resolver: zodResolver(createPromptSchema),
@@ -49,47 +51,69 @@ export default function CreatePromptPage() {
       category_id: "",
       price: 0,
       cover_image_url: "",
-      prompt_file_url: "",
+      prompt_text: "",
     },
   });
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const coverImageUrl = watch("cover_image_url");
+
   if (!user) return null;
 
-  // Protect route: only sellers can create prompts
-  if (user.role !== "seller") {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <AlertCircle className="size-16 text-vault-error mb-6" />
-        <h1 className="font-heading text-2xl font-bold tracking-tight">Access Denied</h1>
-        <p className="mt-2 text-muted-foreground max-w-md">
-          Only registered sellers can create prompts in the marketplace.
-        </p>
-        <Link href="/">
-          <Button className="mt-8 bg-vault-gold text-vault-surface hover:bg-vault-gold/90">
-            Back to Marketplace
-          </Button>
-        </Link>
-      </div>
-    );
-  }
+  const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploading(true);
+      setError(null);
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const token = localStorage.getItem("accessToken");
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+      const res = await fetch(`${API_BASE_URL}/api/prompts/upload-image`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to upload image");
+      }
+
+      const responseData = await res.json();
+      setValue("cover_image_url", responseData.url, { shouldValidate: true });
+    } catch (err) {
+      console.error(err);
+      setError("Failed to upload image.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const onSubmit = async (data: CreatePromptValues) => {
     setError(null);
     try {
-      // Convert empty strings to undefined to match Optional fields in API
       const payload = {
         ...data,
         cover_image_url: data.cover_image_url || undefined,
-        prompt_file_url: data.prompt_file_url || undefined,
       };
-      
-      const newPrompt = await createPromptMutation.mutateAsync(payload);
-      router.push(`/prompt/${newPrompt.id}`);
+
+      await createPromptMutation.mutateAsync(payload);
+      queryClient.invalidateQueries({ queryKey: ["seller-prompts"] });
+      queryClient.invalidateQueries({ queryKey: ["seller-prompts-overview"] });
+      queryClient.invalidateQueries({ queryKey: ["prompts"] });
+      router.push("/dashboard/listings");
     } catch (err: unknown) {
       if (err instanceof Error) {
-        setError(err.message || "Failed to create prompt. Please try again.");
+        setError(err.message || "Failed to create listing. Please try again.");
       } else {
-        setError("Failed to create prompt. Please try again.");
+        setError("Failed to create listing. Please try again.");
       }
     }
   };
@@ -98,11 +122,12 @@ export default function CreatePromptPage() {
     <div className="w-full max-w-3xl">
       <Link
         href="/dashboard"
-        className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+        className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="size-4" />
         Back to Dashboard
       </Link>
+
       <div className="space-y-8">
         <div>
           <h1 className="font-heading text-3xl font-bold tracking-tight">Create Listing</h1>
@@ -119,6 +144,7 @@ export default function CreatePromptPage() {
           )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+            {/* 1. Basic Info */}
             <div className="space-y-6">
               <h2 className="font-heading text-xl font-bold">1. Basic Info</h2>
               <div className="grid gap-6 md:grid-cols-2">
@@ -143,7 +169,7 @@ export default function CreatePromptPage() {
                   </label>
                   <Input
                     id="short_description"
-                    placeholder="A brief summary of what this prompt does..."
+                    placeholder="A concise summary (10-500 characters)"
                     {...register("short_description")}
                     className={errors.short_description ? "border-red-500" : ""}
                   />
@@ -152,25 +178,47 @@ export default function CreatePromptPage() {
                   )}
                 </div>
 
+                <div className="space-y-2 md:col-span-2">
+                  <label htmlFor="full_description" className="text-sm font-medium leading-none">
+                    Full Description
+                  </label>
+                  <Textarea
+                    id="full_description"
+                    placeholder="Provide detailed information about what this prompt does and how to use it..."
+                    className={`min-h-[160px] resize-y ${errors.full_description ? "border-red-500" : ""}`}
+                    {...register("full_description")}
+                  />
+                  <p className="text-xs text-muted-foreground">Markdown is supported.</p>
+                  {errors.full_description && (
+                    <p className="text-xs text-red-500">{errors.full_description.message}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Category & Pricing */}
+            <div className="space-y-6 border-t border-border pt-6">
+              <h2 className="font-heading text-xl font-bold">2. Category & Pricing</h2>
+              <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-2">
                   <label htmlFor="category_id" className="text-sm font-medium leading-none">
                     Category
                   </label>
-                  <Select
+                  <select
+                    id="category_id"
                     disabled={categoriesLoading}
-                    onValueChange={(value) => setValue("category_id", value as string)}
+                    {...register("category_id")}
+                    className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+                      errors.category_id ? "border-red-500" : ""
+                    }`}
                   >
-                    <SelectTrigger className={errors.category_id ? "border-red-500" : ""}>
-                      <SelectValue placeholder="Select a category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories?.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <option value="">Select a category</option>
+                    {categories?.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
                   {errors.category_id && (
                     <p className="text-xs text-red-500">{errors.category_id.message}</p>
                   )}
@@ -184,8 +232,8 @@ export default function CreatePromptPage() {
                     id="price"
                     type="number"
                     step="0.01"
-                    min="0.99"
-                    placeholder="9.99"
+                    min="0"
+                    placeholder="29.99"
                     {...register("price", { valueAsNumber: true })}
                     className={errors.price ? "border-red-500" : ""}
                   />
@@ -196,59 +244,71 @@ export default function CreatePromptPage() {
               </div>
             </div>
 
-            <div className="space-y-6">
-              <h2 className="font-heading text-xl font-bold">2. Details</h2>
-              <div className="space-y-2">
-                <label htmlFor="full_description" className="text-sm font-medium leading-none">
-                  Full Description & Instructions
-                </label>
-                <Textarea
-                  id="full_description"
-                  placeholder="Explain exactly how to use this prompt, what parameters it takes, and what results to expect..."
-                  className={`min-h-[200px] resize-y ${errors.full_description ? "border-red-500" : ""}`}
-                  {...register("full_description")}
-                />
-                <p className="text-xs text-muted-foreground">Markdown is supported.</p>
-                {errors.full_description && (
-                  <p className="text-xs text-red-500">{errors.full_description.message}</p>
-                )}
-              </div>
-            </div>
-
+            {/* 3. Media & Prompt Details */}
             <div className="space-y-6 border-t border-border pt-6">
-              <h2 className="font-heading text-xl font-bold">3. Media & Files (Milestone 2 Placeholders)</h2>
-              <p className="text-sm text-muted-foreground mb-4">
-                For now, please provide direct URLs. File uploading will be available in the next milestone.
+              <h2 className="font-heading text-xl font-bold">3. Media & Prompt Details</h2>
+              <p className="mb-4 text-sm text-muted-foreground">
+                Upload a cover image and provide the prompt text.
               </p>
-              
+
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-2 md:col-span-2">
-                  <label htmlFor="cover_image_url" className="text-sm font-medium leading-none">
-                    Cover Image URL (Optional)
-                  </label>
-                  <Input
-                    id="cover_image_url"
-                    placeholder="https://example.com/image.jpg"
-                    {...register("cover_image_url")}
-                  />
-                  {errors.cover_image_url && <p className="text-sm text-red-500">{errors.cover_image_url.message}</p>}
+                  <label className="text-sm font-medium leading-none">Example Output Image</label>
+                  <div className="flex flex-col gap-4">
+                    {coverImageUrl && (
+                      <div className="relative aspect-video w-full max-w-sm overflow-hidden rounded-lg border border-border">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={coverImageUrl} alt="Cover Preview" className="size-full object-cover" />
+                      </div>
+                    )}
+                    <div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        ref={fileInputRef}
+                        onChange={handleImageUpload}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
+                      >
+                        {isUploading ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+                        {coverImageUrl ? "Change Image" : "Upload Image"}
+                      </Button>
+                    </div>
+                  </div>
+                  {errors.cover_image_url && (
+                    <p className="text-sm text-red-500">{errors.cover_image_url.message}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
-                  <label htmlFor="prompt_file_url" className="text-sm font-medium leading-none">
-                    Prompt File URL (Optional)
+                  <label htmlFor="prompt_text" className="text-sm font-medium leading-none">
+                    Prompt Text
                   </label>
-                  <Input
-                    id="prompt_file_url"
-                    placeholder="https://example.com/prompt.txt"
-                    {...register("prompt_file_url")}
+                  <p className="text-xs text-muted-foreground">
+                    Enter the exact prompt text that the buyer will receive. Formatting is preserved.
+                  </p>
+                  <Textarea
+                    id="prompt_text"
+                    placeholder={"Enter the exact prompt text that the buyer will receive…\n\nYou can use multiple lines, variables like {{topic}}, and any special formatting.\n\nThis text will be hidden until the buyer completes their purchase."}
+                    className={`min-h-[250px] resize-y font-mono text-sm leading-relaxed ${
+                      errors.prompt_text ? "border-red-500" : ""
+                    }`}
+                    {...register("prompt_text")}
                   />
-                  {errors.prompt_file_url && <p className="text-sm text-red-500">{errors.prompt_file_url.message}</p>}
+                  {errors.prompt_text && (
+                    <p className="text-sm text-red-500">{errors.prompt_text.message}</p>
+                  )}
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-4 pt-6 border-t border-border">
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-4 border-t border-border pt-6">
               <Link href="/dashboard">
                 <Button variant="outline" type="button">
                   Cancel
@@ -257,10 +317,10 @@ export default function CreatePromptPage() {
               <Button
                 type="submit"
                 disabled={isSubmitting || categoriesLoading}
-                className="bg-vault-gold text-vault-surface hover:bg-vault-gold/90 min-w-[120px]"
+                className="min-w-[120px] bg-vault-gold text-vault-surface hover:bg-vault-gold/90"
               >
-                {isSubmitting ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
-                {isSubmitting ? "Creating..." : "Create Prompt"}
+                {isSubmitting ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+                {isSubmitting ? "Creating..." : "Publish Listing"}
               </Button>
             </div>
           </form>

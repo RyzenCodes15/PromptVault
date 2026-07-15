@@ -15,9 +15,8 @@ class CategoryCreate(CategoryBase):
     pass
 
 
-class CategoryRead(CategoryBase):
+class CategoryRead(BaseModel):
     id: uuid.UUID
-    created_at: datetime
-    updated_at: datetime
+    name: str
 
     model_config = ConfigDict(from_attributes=True)

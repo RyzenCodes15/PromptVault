@@ -41,7 +41,7 @@ class Prompt(Base):
     full_description: Mapped[str] = mapped_column(Text, nullable=False)
     
     cover_image_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
-    prompt_file_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    prompt_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     
     price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     

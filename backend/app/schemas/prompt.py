@@ -17,11 +17,11 @@ class PromptBase(BaseModel):
     category_id: uuid.UUID
     price: float = Field(..., gt=0)
     cover_image_url: Optional[str] = None
-    prompt_file_url: Optional[str] = None
+    prompt_text: Optional[str] = None
 
 
 class PromptCreate(PromptBase):
-    pass
+    prompt_text: str = Field(..., min_length=1)
 
 
 class PromptUpdate(BaseModel):
@@ -31,7 +31,7 @@ class PromptUpdate(BaseModel):
     category_id: Optional[uuid.UUID] = None
     price: Optional[float] = Field(None, gt=0)
     cover_image_url: Optional[str] = None
-    prompt_file_url: Optional[str] = None
+    prompt_text: Optional[str] = None
     status: Optional[PromptStatus] = None
 
 

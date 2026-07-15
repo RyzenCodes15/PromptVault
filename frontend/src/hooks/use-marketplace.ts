@@ -50,6 +50,8 @@ export function useCreatePrompt() {
     mutationFn: (data: Partial<Prompt>) => api.post("/api/prompts", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["prompts"] });
+      queryClient.invalidateQueries({ queryKey: ["seller-prompts"] });
+      queryClient.invalidateQueries({ queryKey: ["seller-prompts-overview"] });
     },
   });
 }
@@ -61,8 +63,46 @@ export function useUpdatePrompt(id: string) {
     mutationFn: (data: Partial<Prompt>) => api.put(`/api/prompts/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["prompt", id] });
+      queryClient.invalidateQueries({ queryKey: ["prompts"] });
       queryClient.invalidateQueries({ queryKey: ["seller-prompts"] });
       queryClient.invalidateQueries({ queryKey: ["seller-prompts-overview"] });
+    },
+  });
+}
+
+export function useDeletePrompt() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/api/prompts/${id}`),
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey: ["seller-prompts"] });
+      await queryClient.cancelQueries({ queryKey: ["seller-prompts-overview"] });
+      await queryClient.cancelQueries({ queryKey: ["prompts"] });
+
+      const filterItems = (oldData: PaginatedPrompts | undefined) => {
+        if (!oldData || !Array.isArray(oldData.items)) return oldData;
+        return {
+          ...oldData,
+          total: Math.max(0, (oldData.total || 1) - 1),
+          items: oldData.items.filter((item: Prompt) => item.id !== id),
+        };
+      };
+
+      queryClient.setQueriesData({ queryKey: ["seller-prompts"] }, filterItems);
+      queryClient.setQueriesData({ queryKey: ["seller-prompts-overview"] }, filterItems);
+      queryClient.setQueriesData({ queryKey: ["prompts"] }, filterItems);
+      queryClient.removeQueries({ queryKey: ["prompt", id] });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["seller-prompts"] });
+      queryClient.invalidateQueries({ queryKey: ["seller-prompts-overview"] });
+      queryClient.invalidateQueries({ queryKey: ["prompts"] });
+    },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: ["seller-prompts"] });
+      queryClient.invalidateQueries({ queryKey: ["seller-prompts-overview"] });
+      queryClient.invalidateQueries({ queryKey: ["prompts"] });
     },
   });
 }

@@ -40,7 +40,7 @@ export interface Prompt {
   full_description: string;
   price: number;
   cover_image_url?: string;
-  prompt_file_url?: string;
+  prompt_text?: string;
   status: "active" | "inactive" | "deleted";
   created_at: string;
   updated_at: string;

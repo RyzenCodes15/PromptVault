@@ -13,7 +13,7 @@ async def http_exception_handler(
     request: Request, exc: HTTPException
 ) -> JSONResponse:
     """Handle FastAPI HTTPExceptions with consistent response format."""
-    return JSONResponse(
+    response = JSONResponse(
         status_code=exc.status_code,
         content={
             "success": False,
@@ -22,6 +22,11 @@ async def http_exception_handler(
             "detail": str(exc.detail),
         },
     )
+    origin = request.headers.get("origin")
+    if origin:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+    return response
 
 
 async def unhandled_exception_handler(
@@ -29,7 +34,7 @@ async def unhandled_exception_handler(
 ) -> JSONResponse:
     """Handle unexpected exceptions with a generic error response."""
     logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
-    return JSONResponse(
+    response = JSONResponse(
         status_code=500,
         content={
             "success": False,
@@ -38,6 +43,11 @@ async def unhandled_exception_handler(
             "detail": None,
         },
     )
+    origin = request.headers.get("origin")
+    if origin:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+    return response
 
 
 def register_exception_handlers(app: FastAPI) -> None:
