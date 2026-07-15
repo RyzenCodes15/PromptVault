@@ -7,7 +7,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Vault, User, LogOut, Settings, LayoutDashboard } from "lucide-react";
+import { Vault, User, LogOut, Settings, LayoutDashboard, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { HealthIndicator } from "@/components/shared/health-indicator";
@@ -64,6 +64,15 @@ export function Navbar() {
               {link.label}
             </Link>
           ))}
+          {user?.role === "buyer" && (
+            <Link
+              href="/marketplace/orders"
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground flex items-center gap-1.5"
+            >
+              <ShoppingBag className="size-4 text-vault-gold" />
+              My Purchases
+            </Link>
+          )}
           {!user && (
             <>
               <Link href="/#features" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">Features</Link>
@@ -113,6 +122,16 @@ export function Navbar() {
                           <LayoutDashboard className="size-4" />
                           Dashboard
                         </Link>
+                        {user.role === "buyer" && (
+                          <Link 
+                            href="/marketplace/orders"
+                            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted"
+                            onClick={() => setDropdownOpen(false)}
+                          >
+                            <ShoppingBag className="size-4 text-vault-gold" />
+                            My Purchases
+                          </Link>
+                        )}
                         <Link 
                           href={user.role === 'seller' ? '/dashboard/profile' : '/profile'}
                           className="flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted"
@@ -226,6 +245,16 @@ export function Navbar() {
                     >
                       Dashboard
                     </Link>
+                    {user.role === "buyer" && (
+                      <Link 
+                        href="/marketplace/orders"
+                        onClick={() => setMobileOpen(false)}
+                        className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground flex items-center gap-1.5"
+                      >
+                        <ShoppingBag className="size-4 text-vault-gold" />
+                        My Purchases
+                      </Link>
+                    )}
                     <Link 
                       href={user.role === 'seller' ? '/dashboard/profile' : '/profile'}
                       onClick={() => setMobileOpen(false)}

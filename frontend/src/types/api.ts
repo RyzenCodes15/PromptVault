@@ -46,6 +46,8 @@ export interface Prompt {
   updated_at: string;
   seller?: User;
   category?: Category;
+  is_purchased?: boolean;
+  is_owner?: boolean;
 }
 
 export interface PaginatedPrompts {
@@ -53,4 +55,47 @@ export interface PaginatedPrompts {
   total: number;
   page: number;
   limit: number;
+}
+
+export interface CheckoutResponse {
+  checkout_url: string;
+  session_id: string;
+  order_id: string;
+}
+
+export interface OrderItemRead {
+  id: string;
+  order_id: string;
+  prompt_id: string;
+  seller_id: string;
+  price_at_purchase: number;
+  created_at: string;
+  prompt_title: string;
+  prompt_short_description: string;
+  prompt_cover_image_url?: string;
+  prompt_category_name: string;
+  seller_name: string;
+  seller_avatar_url?: string;
+  order_status: "pending" | "completed" | "failed" | "refunded";
+}
+
+export interface PaginatedPurchasesRead {
+  items: OrderItemRead[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface SellerSaleItemRead {
+  id: string;
+  prompt_id: string;
+  prompt_title: string;
+  price_at_purchase: number;
+  created_at: string;
+}
+
+export interface SellerStatsResponse {
+  sales_count: number;
+  total_revenue: number;
+  latest_orders: SellerSaleItemRead[];
 }

@@ -21,6 +21,7 @@ email-validator==2.2.0
 
 # Integrations
 cloudinary==1.42.2
+stripe>=11.0.0
 
 # Testing
 pytest==8.4.1

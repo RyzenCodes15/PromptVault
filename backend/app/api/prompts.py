@@ -2,7 +2,7 @@
 
 import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException, status
+from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException, status, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_optional_user
@@ -12,6 +12,7 @@ from app.integrations.cloudinary import CloudinaryService
 from app.models.user import User
 from app.schemas.prompt import PromptCreate, PromptUpdate, PromptRead, PaginatedPromptRead
 from app.services.prompt_service import PromptService
+from app.services.order_service import OrderService
 
 settings = get_settings()
 
@@ -93,6 +94,29 @@ async def get_prompt(
     """Get a prompt by ID."""
     service = PromptService(session)
     return await service.get_prompt(prompt_id, current_user)
+
+
+@router.get("/{prompt_id}/download")
+async def download_prompt(
+    prompt_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """Download prompt text file (must be owner or verified buyer)."""
+    order_service = OrderService(session)
+    content = await order_service.verify_download_access(current_user, prompt_id)
+
+    prompt_service = PromptService(session)
+    prompt = await prompt_service.repository.get_by_id(prompt_id)
+    slug = "prompt"
+    if prompt and prompt.title:
+        slug = prompt.title.replace(" ", "_").replace("/", "_").lower()
+
+    return Response(
+        content=content,
+        media_type="text/plain",
+        headers={"Content-Disposition": f'attachment; filename="{slug}_prompt.txt"'},
+    )
 
 
 @router.put("/{prompt_id}", response_model=PromptRead)

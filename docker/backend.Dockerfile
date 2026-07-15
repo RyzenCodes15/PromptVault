@@ -9,7 +9,7 @@ RUN apt-get update && \
 
 # Python deps (cached layer)
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --default-timeout=100 -r requirements.txt
 
 # Application code
 COPY . .

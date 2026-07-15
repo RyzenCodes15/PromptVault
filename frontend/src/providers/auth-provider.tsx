@@ -54,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!loading) {
-      if (!user && !PUBLIC_ROUTES.includes(pathname) && !pathname.startsWith("/api/")) {
+      if (!user && !PUBLIC_ROUTES.includes(pathname) && !pathname.startsWith("/prompt/") && !pathname.startsWith("/api/")) {
         router.push("/login");
       } else if (user && (pathname === "/login" || pathname === "/register")) {
         router.push(user.role === "buyer" ? "/marketplace" : "/dashboard");

@@ -8,6 +8,7 @@ from app.api.users import router as users_router
 from app.api.categories import router as categories_router
 from app.api.prompts import router as prompts_router
 from app.api.uploads import router as uploads_router
+from app.api.orders import router as orders_router
 
 api_router = APIRouter(prefix="/api")
 api_router.include_router(health_router, tags=["health"])
@@ -16,4 +17,5 @@ api_router.include_router(users_router, prefix="/users", tags=["users"])
 api_router.include_router(categories_router, prefix="/categories", tags=["categories"])
 api_router.include_router(prompts_router, prefix="/prompts", tags=["prompts"])
 api_router.include_router(uploads_router, prefix="/uploads", tags=["uploads"])
+api_router.include_router(orders_router, prefix="/orders", tags=["orders"])
 

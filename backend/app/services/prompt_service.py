@@ -7,6 +7,7 @@ from fastapi import HTTPException, status
 
 from app.models.prompt import Prompt
 from app.models.user import User, UserRole
+from app.repositories.order_repository import OrderRepository
 from app.repositories.prompt_repository import PromptRepository
 from app.schemas.prompt import PromptCreate, PromptRead, PromptUpdate
 
@@ -39,21 +40,33 @@ class PromptService:
         return await self.repository.create(prompt)
 
     async def get_prompt(self, prompt_id: uuid.UUID, user: Optional[User] = None) -> Prompt | PromptRead:
-        """Get a prompt by ID. Redacts prompt_text if user is not the seller."""
+        """Get a prompt by ID. Redacts prompt_text if user is not the seller or a verified buyer."""
         prompt = await self.repository.get_by_id(prompt_id)
         if not prompt:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Prompt not found.",
             )
-        
-        # Redact prompt_text if the user is not the seller (simulating purchase rules)
-        if not user or prompt.seller_id != user.id:
-            prompt_read = PromptRead.model_validate(prompt)
-            prompt_read.prompt_text = None
+
+        prompt_read = PromptRead.model_validate(prompt)
+
+        # Check if user is seller/owner
+        if user and prompt.seller_id == user.id:
+            prompt_read.is_owner = True
+            prompt_read.is_purchased = True
             return prompt_read
-            
-        return prompt
+
+        # Check if user has purchased this prompt
+        if user and user.role == UserRole.buyer:
+            order_repo = OrderRepository(self.session)
+            has_purchased = await order_repo.has_purchased_prompt(user.id, prompt_id)
+            if has_purchased:
+                prompt_read.is_purchased = True
+                return prompt_read
+
+        # Otherwise redact prompt_text
+        prompt_read.prompt_text = None
+        return prompt_read
 
     async def search_prompts(
         self,

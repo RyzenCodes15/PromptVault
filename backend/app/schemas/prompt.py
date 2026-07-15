@@ -43,6 +43,8 @@ class PromptRead(PromptBase):
     updated_at: datetime
     seller: Optional[UserRead] = None
     category: Optional[CategoryRead] = None
+    is_purchased: bool = False
+    is_owner: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 
