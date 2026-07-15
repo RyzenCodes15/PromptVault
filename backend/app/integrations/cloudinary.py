@@ -1,8 +1,8 @@
-"""Cloudinary integration service abstraction.
+"""Cloudinary integration service."""
 
-This module defines the interface for Cloudinary media management.
-Implementation will be added when media upload functionality is built.
-"""
+import cloudinary
+import cloudinary.uploader
+from cloudinary.utils import cloudinary_url
 
 
 class CloudinaryService:
@@ -12,18 +12,25 @@ class CloudinaryService:
         self._cloud_name = cloud_name
         self._api_key = api_key
         self._api_secret = api_secret
+        cloudinary.config(
+            cloud_name=self._cloud_name,
+            api_key=self._api_key,
+            api_secret=self._api_secret,
+            secure=True,
+        )
 
-    async def upload_image(self, file_path: str, folder: str = "prompts") -> dict:
+    async def upload_image(self, file_path: str | bytes, folder: str = "prompts") -> dict:
         """Upload an image to Cloudinary.
 
         Args:
-            file_path: Local path or URL of the image to upload.
+            file_path: Local path, URL, or bytes of the image to upload.
             folder: Cloudinary folder to store the image in.
 
         Returns:
             Dictionary containing the upload result with url, public_id, etc.
         """
-        raise NotImplementedError("Cloudinary integration not yet configured")
+        result = cloudinary.uploader.upload(file_path, folder=folder)
+        return result
 
     async def delete_image(self, public_id: str) -> bool:
         """Delete an image from Cloudinary by its public ID.
@@ -34,7 +41,8 @@ class CloudinaryService:
         Returns:
             True if deletion was successful.
         """
-        raise NotImplementedError("Cloudinary integration not yet configured")
+        result = cloudinary.uploader.destroy(public_id)
+        return result.get("result") == "ok"
 
     async def get_image_url(
         self, public_id: str, width: int | None = None, height: int | None = None
@@ -49,4 +57,12 @@ class CloudinaryService:
         Returns:
             The transformed image URL string.
         """
-        raise NotImplementedError("Cloudinary integration not yet configured")
+        options = {}
+        if width:
+            options["width"] = width
+        if height:
+            options["height"] = height
+            options["crop"] = "fill"
+        
+        url, _ = cloudinary_url(public_id, **options)
+        return url

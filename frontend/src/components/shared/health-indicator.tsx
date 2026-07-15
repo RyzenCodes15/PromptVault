@@ -19,18 +19,18 @@ export function HealthIndicator() {
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
         isLoading && "bg-muted text-muted-foreground",
-        isError && "bg-red-500/10 text-red-400",
-        isOnline && "bg-emerald-500/10 text-emerald-400",
-        !isLoading && !isError && !isOnline && "bg-amber-500/10 text-amber-400"
+        isError && "bg-vault-error/10 text-vault-error",
+        isOnline && "bg-vault-emerald/10 text-vault-emerald",
+        !isLoading && !isError && !isOnline && "bg-vault-warning/10 text-vault-warning"
       )}
     >
       <span
         className={cn(
           "size-1.5 rounded-full",
           isLoading && "animate-pulse bg-muted-foreground",
-          isError && "bg-red-400",
-          isOnline && "animate-pulse bg-emerald-400",
-          !isLoading && !isError && !isOnline && "bg-amber-400"
+          isError && "bg-vault-error",
+          isOnline && "animate-pulse bg-vault-emerald",
+          !isLoading && !isError && !isOnline && "bg-vault-warning"
         )}
       />
       {isLoading && "Connecting…"}

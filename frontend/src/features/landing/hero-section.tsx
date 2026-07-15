@@ -1,103 +1,125 @@
 /**
- * Hero section with animated gradient mesh background.
+ * Hero section with editorial typography and search bar.
  */
 
 "use client";
 
 import { motion } from "framer-motion";
+import { ArrowRight, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export function HeroSection() {
-  return (
-    <section className="relative flex min-h-[calc(100vh-4rem)] items-center overflow-hidden pt-16">
-      {/* Animated Gradient Mesh Background */}
-      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute -top-1/2 -left-1/4 h-[800px] w-[800px] rounded-full bg-violet-600/20 blur-[120px]" />
-        <div className="absolute -right-1/4 top-1/4 h-[600px] w-[600px] rounded-full bg-indigo-600/15 blur-[120px]" />
-        <div className="absolute -bottom-1/4 left-1/3 h-[500px] w-[500px] rounded-full bg-cyan-500/10 blur-[120px]" />
-        {/* Grid pattern overlay */}
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
-            backgroundSize: "60px 60px",
-          }}
-        />
-      </div>
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
 
-      <div className="mx-auto max-w-7xl px-6">
-        <div className="mx-auto max-w-3xl text-center">
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/marketplace?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
+  return (
+    <section className="relative flex min-h-[calc(100vh-4rem)] items-center pt-16">
+      {/* Subtle grain texture — no gradients or blobs */}
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-background" />
+
+      <div className="mx-auto w-full max-w-7xl px-6 py-24 sm:py-32">
+        <div className="mx-auto max-w-4xl text-center">
           {/* Badge */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.4 }}
           >
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/20 bg-violet-500/10 px-4 py-1.5 text-sm font-medium text-violet-300">
-              <span className="size-1.5 rounded-full bg-violet-400 animate-pulse" />
+            <span className="inline-flex items-center gap-2 rounded-full border border-border bg-vault-surface px-4 py-1.5 text-xs font-medium tracking-wide text-secondary-foreground uppercase">
+              <span className="size-1.5 rounded-full bg-vault-emerald" />
               Now in Early Access
             </span>
           </motion.div>
 
           {/* Headline */}
           <motion.h1
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="mt-8 text-5xl font-bold leading-[1.1] tracking-tight sm:text-6xl lg:text-7xl"
+            transition={{ duration: 0.4, delay: 0.08 }}
+            className="mt-10 font-heading text-5xl font-semibold leading-[1.05] tracking-tight sm:text-6xl lg:text-[4.5rem]"
           >
-            The Marketplace for{" "}
-            <span className="bg-gradient-to-r from-violet-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent">
-              AI Prompts
-            </span>
+            The Marketplace
+            <br />
+            for{" "}
+            <span className="text-vault-gold">AI&nbsp;Prompts</span>
           </motion.h1>
 
           {/* Sub-headline */}
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="mt-6 text-lg leading-relaxed text-muted-foreground sm:text-xl"
+            transition={{ duration: 0.4, delay: 0.16 }}
+            className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl"
           >
             Discover, buy, and sell expertly crafted prompts for AI image
             generation. Join thousands of creators turning their prompt
             engineering skills into revenue.
           </motion.p>
 
+          {/* Search Bar */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.24 }}
+            className="mx-auto mt-12 max-w-xl"
+          >
+            <form onSubmit={handleSearch} className="flex items-center gap-2 rounded-xl border border-border bg-vault-surface p-1.5 transition-colors focus-within:border-vault-gold/40">
+              <div className="flex items-center gap-3 pl-3 flex-1">
+                <Search className="size-4 text-muted-foreground shrink-0" />
+                <input
+                  type="text"
+                  placeholder="Search prompts, styles, creators…"
+                  className="h-10 w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
+                  aria-label="Search prompts"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <Button
+                type="submit"
+                size="lg"
+                className="h-10 px-6 text-sm bg-foreground text-background hover:bg-vault-gold hover:text-background transition-colors shrink-0"
+              >
+                Search
+              </Button>
+            </form>
+          </motion.div>
+
           {/* CTA Buttons */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center"
+            transition={{ duration: 0.4, delay: 0.32 }}
+            className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center"
           >
-            <Button
-              size="lg"
-              className="h-12 px-8 text-base bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/25 hover:from-violet-500 hover:to-indigo-500 hover:shadow-violet-500/40 transition-shadow"
-            >
-              Explore Prompts
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="ml-2 size-4"
+            <Link href="/marketplace" className="inline-block">
+              <Button
+                size="lg"
+                className="h-12 px-8 text-sm font-medium bg-foreground text-background hover:bg-vault-gold hover:text-background transition-colors w-full sm:w-auto"
               >
-                <path d="M5 12h14" />
-                <path d="m12 5 7 7-7 7" />
-              </svg>
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              className="h-12 px-8 text-base"
-            >
-              Start Selling
-            </Button>
+                Explore Prompts
+                <ArrowRight className="ml-2 size-4" />
+              </Button>
+            </Link>
+            <Link href="/register" className="inline-block">
+              <Button
+                variant="outline"
+                size="lg"
+                className="h-12 px-8 text-sm font-medium w-full sm:w-auto"
+              >
+                Start Selling
+              </Button>
+            </Link>
           </motion.div>
 
           {/* Social Proof */}
@@ -105,21 +127,16 @@ export function HeroSection() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.5 }}
-            className="mt-16 flex flex-wrap items-center justify-center gap-x-8 gap-y-4 text-sm text-muted-foreground"
+            className="mt-20 flex flex-wrap items-center justify-center gap-x-8 gap-y-4 text-sm text-muted-foreground"
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <div className="flex -space-x-2">
-                {[
-                  "bg-violet-500",
-                  "bg-indigo-500",
-                  "bg-cyan-500",
-                  "bg-emerald-500",
-                ].map((color, i) => (
+                {["A", "B", "C", "D"].map((letter, i) => (
                   <div
                     key={i}
-                    className={`size-7 rounded-full border-2 border-background ${color} flex items-center justify-center text-[10px] font-bold text-white`}
+                    className="flex size-7 items-center justify-center rounded-full border-2 border-background bg-vault-elevated text-[10px] font-semibold text-secondary-foreground"
                   >
-                    {String.fromCharCode(65 + i)}
+                    {letter}
                   </div>
                 ))}
               </div>

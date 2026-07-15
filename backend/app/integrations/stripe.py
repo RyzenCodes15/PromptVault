@@ -15,7 +15,7 @@ class StripeService:
     async def create_checkout_session(
         self,
         price_amount: int,
-        currency: str = "usd",
+        currency: str = "inr",
         success_url: str = "",
         cancel_url: str = "",
     ) -> dict:
