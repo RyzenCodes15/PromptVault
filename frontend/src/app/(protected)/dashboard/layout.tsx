@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { 
   LayoutDashboard, 
   Package, 
@@ -30,10 +30,17 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  if (!user) return null;
+  useEffect(() => {
+    if (user && user.role === "buyer") {
+      router.replace("/marketplace");
+    }
+  }, [user, router]);
+
+  if (!user || user.role === "buyer") return null;
 
   return (
     <div className="flex min-h-screen flex-col bg-background md:flex-row">
