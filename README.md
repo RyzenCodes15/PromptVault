@@ -137,7 +137,7 @@ The public product overview page displaying full descriptions, pricing, metadata
 
 ![Prompt Details](docs/images/demoprompt1.png)
 
-### Protected Prompt After Purchase
+### Protected Prompt Before Purchase
 The pre-purchase security state on the product page confirming that proprietary prompt instructions and downloadable `.txt` files remain server-gated.
 
 ![Protected Prompt After Purchase](docs/images/demoprompt2.png)
