@@ -1,7 +1,7 @@
 """Order service layer."""
 
 import uuid
-from typing import Optional
+from typing import Any, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +21,16 @@ from app.schemas.order import (
 )
 
 settings = get_settings()
+
+
+def _get_val(obj: Any, key: str, default: Any = None) -> Any:
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    try:
+        val = getattr(obj, key, default)
+        return default if val is None else val
+    except (AttributeError, KeyError):
+        return default
 
 
 class OrderService:
@@ -130,20 +140,21 @@ class OrderService:
         if not event:
             return
 
-        event_type = event.get("type")
-        data_object = event.get("data", {}).get("object", {})
+        event_type = _get_val(event, "type")
+        data = _get_val(event, "data", {})
+        data_object = _get_val(data, "object", {})
 
         # Handle both standard Stripe event format and mock dict format
-        if not event_type and "id" in event:
-            session_id = event.get("id", "")
-            metadata = event.get("metadata", {})
-            order_id_str = metadata.get("order_id")
+        if not event_type and _get_val(event, "id"):
+            session_id = _get_val(event, "id", "")
+            metadata = _get_val(event, "metadata", {})
+            order_id_str = _get_val(metadata, "order_id")
         else:
-            session_id = data_object.get("id", "")
-            metadata = data_object.get("metadata", {})
-            order_id_str = metadata.get("order_id")
+            session_id = _get_val(data_object, "id", "")
+            metadata = _get_val(data_object, "metadata", {})
+            order_id_str = _get_val(metadata, "order_id")
 
-        if event_type == "checkout.session.completed" or (not event_type and session_id.startswith("cs_test_mock_")):
+        if event_type in ("checkout.session.completed", "checkout.session.async_payment_succeeded") or (not event_type and session_id.startswith("cs_test_mock_")):
             order: Optional[Order] = None
             if order_id_str:
                 try:
@@ -157,7 +168,7 @@ class OrderService:
                 order.status = OrderStatus.completed
                 if order.payment:
                     order.payment.status = PaymentStatus.succeeded
-                    payment_intent = data_object.get("payment_intent") or f"pi_mock_{uuid.uuid4().hex}"
+                    payment_intent = _get_val(data_object, "payment_intent") or f"pi_mock_{uuid.uuid4().hex}"
                     order.payment.stripe_payment_intent_id = payment_intent
                 await self.repository.update_order(order)
 

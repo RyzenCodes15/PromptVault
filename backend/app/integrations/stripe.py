@@ -48,8 +48,9 @@ class StripeService:
             Dictionary containing the checkout session details (id, url).
         """
         # Convert price to integer smallest units (e.g. paise/cents)
-        if isinstance(price_amount, float):
-            unit_amount = int(round(price_amount * 100))
+        import decimal
+        if isinstance(price_amount, (float, decimal.Decimal)):
+            unit_amount = int(round(float(price_amount) * 100))
         else:
             # If passed integer, assume it's already in paise/cents or check scale
             unit_amount = int(price_amount)
@@ -58,7 +59,9 @@ class StripeService:
             # Mock mode fallback when real Stripe API keys are not configured
             mock_session_id = f"cs_test_mock_{uuid.uuid4().hex}"
             redirect_url = success_url
-            if "?" in redirect_url:
+            if "{CHECKOUT_SESSION_ID}" in redirect_url:
+                redirect_url = redirect_url.replace("{CHECKOUT_SESSION_ID}", mock_session_id)
+            elif "?" in redirect_url:
                 redirect_url += f"&session_id={mock_session_id}"
             elif redirect_url:
                 redirect_url += f"?session_id={mock_session_id}"
@@ -73,7 +76,7 @@ class StripeService:
             }
 
         try:
-            session = stripe.checkout.Session.create(
+            session = await stripe.checkout.Session.create_async(
                 payment_method_types=["card"],
                 line_items=[
                     {

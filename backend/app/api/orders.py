@@ -38,11 +38,17 @@ async def stripe_webhook(
 ):
     """Unauthenticated endpoint receiving Stripe webhook events."""
     payload = await request.body()
-    if not stripe_signature:
-        # In local/mock mode, signature might be empty or dummy
-        stripe_signature = "mock_signature"
-
     service = OrderService(session)
+
+    if not stripe_signature:
+        if service.stripe_service._is_mock_mode():
+            stripe_signature = "mock_signature"
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing Stripe-Signature header",
+            )
+
     await service.handle_webhook(payload, stripe_signature)
     return {"status": "success"}
 
