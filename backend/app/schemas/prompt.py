@@ -17,6 +17,7 @@ class PromptBase(BaseModel):
     category_id: uuid.UUID
     price: float = Field(..., gt=0)
     cover_image_url: Optional[str] = None
+    additional_images: Optional[List[str]] = Field(default=None)
     prompt_text: Optional[str] = None
 
 
@@ -31,6 +32,7 @@ class PromptUpdate(BaseModel):
     category_id: Optional[uuid.UUID] = None
     price: Optional[float] = Field(None, gt=0)
     cover_image_url: Optional[str] = None
+    additional_images: Optional[List[str]] = Field(default=None)
     prompt_text: Optional[str] = None
     status: Optional[PromptStatus] = None
 

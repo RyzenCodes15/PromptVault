@@ -18,13 +18,13 @@ engine_kwargs = {
     "echo": settings.is_development,
     "pool_pre_ping": True,
 }
-if "test" in str(settings.database_url) or settings.is_development:
+if "test" in str(settings.resolved_database_url) or settings.is_development:
     engine_kwargs["poolclass"] = pool.NullPool
 else:
     engine_kwargs["pool_size"] = 10
     engine_kwargs["max_overflow"] = 20
 
-engine = create_async_engine(settings.database_url, **engine_kwargs)
+engine = create_async_engine(settings.resolved_database_url, **engine_kwargs)
 async_session_factory = async_sessionmaker(
     bind=engine,
     class_=AsyncSession,

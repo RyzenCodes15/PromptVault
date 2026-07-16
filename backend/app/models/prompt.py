@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Numeric, String, Text
+from sqlalchemy import DateTime, Enum, ForeignKey, JSON, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
@@ -41,6 +41,7 @@ class Prompt(Base):
     full_description: Mapped[str] = mapped_column(Text, nullable=False)
     
     cover_image_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    additional_images: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list)
     prompt_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     
     price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)

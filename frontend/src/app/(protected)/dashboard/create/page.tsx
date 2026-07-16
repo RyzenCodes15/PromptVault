@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, X, ArrowUp, ArrowDown } from "lucide-react";
 
 import { useAuth } from "@/providers/auth-provider";
 import { useCategories, useCreatePrompt } from "@/hooks/use-marketplace";
@@ -22,6 +22,7 @@ const createPromptSchema = z.object({
   category_id: z.string().uuid("Please select a category"),
   price: z.number({ message: "Price must be a valid number" }).positive("Price must be a positive number"),
   cover_image_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  additional_images: z.array(z.string().url()).optional(),
   prompt_text: z.string().min(1, "Prompt text is required"),
 });
 
@@ -40,6 +41,7 @@ export default function CreateListingPage() {
     register,
     handleSubmit,
     setValue,
+    getValues,
     watch,
     formState: { errors, isSubmitting },
   } = useForm<CreatePromptValues>({
@@ -51,13 +53,17 @@ export default function CreateListingPage() {
       category_id: "",
       price: 0,
       cover_image_url: "",
+      additional_images: [],
       prompt_text: "",
     },
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const additionalFileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isUploadingAdditional, setIsUploadingAdditional] = useState(false);
   const coverImageUrl = watch("cover_image_url");
+  const additionalImages = watch("additional_images") || [];
 
   if (!user) return null;
 
@@ -96,12 +102,78 @@ export default function CreateListingPage() {
     }
   };
 
+  const handleAdditionalImagesUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    try {
+      setIsUploadingAdditional(true);
+      setError(null);
+      const token = localStorage.getItem("accessToken");
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+      const uploadedUrls: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const formData = new FormData();
+        formData.append("file", files[i]);
+
+        const res = await fetch(`${API_BASE_URL}/api/prompts/upload-image`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        });
+
+        if (!res.ok) {
+          throw new Error("Failed to upload gallery image");
+        }
+        const responseData = await res.json();
+        if (responseData.url) {
+          uploadedUrls.push(responseData.url);
+        }
+      }
+
+      const currentImages = getValues("additional_images") || [];
+      setValue("additional_images", [...currentImages, ...uploadedUrls], { shouldValidate: true });
+    } catch (err) {
+      console.error(err);
+      setError("Failed to upload one or more gallery images.");
+    } finally {
+      setIsUploadingAdditional(false);
+      if (additionalFileInputRef.current) {
+        additionalFileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const removeAdditionalImage = (indexToRemove: number) => {
+    const currentImages = getValues("additional_images") || [];
+    setValue(
+      "additional_images",
+      currentImages.filter((_, idx) => idx !== indexToRemove),
+      { shouldValidate: true }
+    );
+  };
+
+  const moveAdditionalImage = (index: number, direction: "up" | "down") => {
+    const currentImages = [...(getValues("additional_images") || [])];
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= currentImages.length) return;
+
+    const temp = currentImages[index];
+    currentImages[index] = currentImages[targetIndex];
+    currentImages[targetIndex] = temp;
+    setValue("additional_images", currentImages, { shouldValidate: true });
+  };
+
   const onSubmit = async (data: CreatePromptValues) => {
     setError(null);
     try {
       const payload = {
         ...data,
         cover_image_url: data.cover_image_url || undefined,
+        additional_images: data.additional_images || [],
       };
 
       await createPromptMutation.mutateAsync(payload);
@@ -282,6 +354,83 @@ export default function CreateListingPage() {
                   </div>
                   {errors.cover_image_url && (
                     <p className="text-sm text-red-500">{errors.cover_image_url.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-3 md:col-span-2 border-t border-border/50 pt-4">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <label className="text-sm font-medium leading-none">Additional Images (Product Gallery)</label>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Upload secondary example images or screenshots. Reorder using ↑ / ↓ buttons.
+                      </p>
+                    </div>
+                    <div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        ref={additionalFileInputRef}
+                        onChange={handleAdditionalImagesUpload}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => additionalFileInputRef.current?.click()}
+                        disabled={isUploadingAdditional}
+                      >
+                        {isUploadingAdditional ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Plus className="mr-2 size-4" />}
+                        Add Gallery Images
+                      </Button>
+                    </div>
+                  </div>
+
+                  {additionalImages.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                      {additionalImages.map((url, index) => (
+                        <div key={`${url}-${index}`} className="group relative aspect-video overflow-hidden rounded-lg border border-border bg-black/20">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={url} alt={`Gallery ${index + 1}`} className="size-full object-cover" />
+                          <div className="absolute inset-0 flex items-center justify-center gap-1 bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
+                            <button
+                              type="button"
+                              onClick={() => moveAdditionalImage(index, "up")}
+                              disabled={index === 0}
+                              className="rounded bg-vault-surface/80 p-1.5 text-foreground hover:bg-vault-surface disabled:opacity-30"
+                              title="Move Up"
+                            >
+                              <ArrowUp className="size-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveAdditionalImage(index, "down")}
+                              disabled={index === additionalImages.length - 1}
+                              className="rounded bg-vault-surface/80 p-1.5 text-foreground hover:bg-vault-surface disabled:opacity-30"
+                              title="Move Down"
+                            >
+                              <ArrowDown className="size-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeAdditionalImage(index)}
+                              className="rounded bg-red-500/80 p-1.5 text-white hover:bg-red-600"
+                              title="Remove"
+                            >
+                              <X className="size-4" />
+                            </button>
+                          </div>
+                          <div className="absolute bottom-1 left-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                            #{index + 1}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex h-24 flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/10 text-xs text-muted-foreground">
+                      No additional gallery images uploaded yet.
+                    </div>
                   )}
                 </div>
 

@@ -21,6 +21,8 @@ import {
   Check,
   AlertCircle,
   ShoppingBag,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -34,6 +36,7 @@ export default function PromptDetailsPage({ params }: { params: Promise<{ id: st
   const checkoutMutation = useCheckoutPrompt();
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   const handleCopy = () => {
     if (prompt?.prompt_text) {
@@ -126,6 +129,15 @@ export default function PromptDetailsPage({ params }: { params: Promise<{ id: st
   const isOwner = prompt.is_owner || (user && user.id === prompt.seller_id);
   const isPurchased = prompt.is_purchased || isOwner;
 
+  const allImages: string[] = [];
+  if (prompt.cover_image_url) {
+    allImages.push(prompt.cover_image_url);
+  }
+  if (prompt.additional_images && Array.isArray(prompt.additional_images)) {
+    allImages.push(...prompt.additional_images);
+  }
+  const currentImageIndex = selectedImageIndex < allImages.length ? selectedImageIndex : 0;
+
   return (
     <>
       <Navbar />
@@ -143,19 +155,71 @@ export default function PromptDetailsPage({ params }: { params: Promise<{ id: st
           <div className="grid grid-cols-1 gap-12 lg:grid-cols-12">
             {/* Left Column: Image & Details */}
             <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-8">
-              <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-border bg-muted/20">
-                {prompt.cover_image_url ? (
-                  <img
-                    src={prompt.cover_image_url}
-                    alt={prompt.title}
-                    className="size-full object-cover"
-                  />
-                ) : (
-                  <div className="flex size-full items-center justify-center">
-                    <Vault className="size-16 text-muted-foreground opacity-20" />
+              {allImages.length > 1 ? (
+                <div className="flex flex-col gap-4">
+                  <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-border bg-muted/20">
+                    <img
+                      src={allImages[currentImageIndex]}
+                      alt={`${prompt.title} - Gallery Image ${currentImageIndex + 1}`}
+                      className="size-full object-cover transition-all duration-300"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setSelectedImageIndex((prev) => (prev - 1 + allImages.length) % allImages.length)}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white backdrop-blur-sm transition-colors hover:bg-black/80"
+                      aria-label="Previous image"
+                    >
+                      <ChevronLeft className="size-5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedImageIndex((prev) => (prev + 1) % allImages.length)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white backdrop-blur-sm transition-colors hover:bg-black/80"
+                      aria-label="Next image"
+                    >
+                      <ChevronRight className="size-5" />
+                    </button>
+                    <div className="absolute bottom-3 right-3 rounded-full bg-black/70 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm">
+                      {currentImageIndex + 1} / {allImages.length}
+                    </div>
                   </div>
-                )}
-              </div>
+
+                  <div className="flex gap-3 overflow-x-auto pb-2">
+                    {allImages.map((url, index) => {
+                      const isSelected = currentImageIndex === index;
+                      return (
+                        <button
+                          key={`${url}-${index}`}
+                          type="button"
+                          onClick={() => setSelectedImageIndex(index)}
+                          className={`relative h-16 w-24 shrink-0 overflow-hidden rounded-lg border-2 transition-all ${
+                            isSelected
+                              ? "border-vault-gold shadow-md shadow-vault-gold/20 ring-2 ring-vault-gold/30"
+                              : "border-border opacity-60 hover:opacity-100"
+                          }`}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={url} alt={`Thumbnail ${index + 1}`} className="size-full object-cover" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-border bg-muted/20">
+                  {prompt.cover_image_url ? (
+                    <img
+                      src={prompt.cover_image_url}
+                      alt={prompt.title}
+                      className="size-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex size-full items-center justify-center">
+                      <Vault className="size-16 text-muted-foreground opacity-20" />
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div>
                 <h2 className="font-heading text-2xl font-semibold tracking-tight border-b border-border pb-4">

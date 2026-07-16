@@ -55,6 +55,14 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         return self.app_env == "production"
 
+    @property
+    def resolved_database_url(self) -> str:
+        import os
+        url = self.database_url
+        if not os.path.exists("/.dockerenv") and "@db:5432" in url:
+            return url.replace("@db:5432", "@localhost:5433")
+        return url
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

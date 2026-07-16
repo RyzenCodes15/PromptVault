@@ -35,6 +35,7 @@ class PromptService:
             full_description=prompt_data.full_description,
             price=prompt_data.price,
             cover_image_url=prompt_data.cover_image_url,
+            additional_images=prompt_data.additional_images or [],
             prompt_text=prompt_data.prompt_text,
         )
         return await self.repository.create(prompt)
