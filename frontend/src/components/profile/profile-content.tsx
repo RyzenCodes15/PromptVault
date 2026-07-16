@@ -52,7 +52,7 @@ export function ProfileContent() {
     setError(null);
     setSuccess(null);
     try {
-      const updated = await api.put("/api/users/profile", data);
+      const updated = await api.put("/api/users/me/profile", data);
       updateUser(updated);
       reset({
         name: updated.name || "",
@@ -86,7 +86,7 @@ export function ProfileContent() {
     formData.append("file", file);
 
     try {
-      const updatedUser = await api.postFormData("/api/users/avatar", formData);
+      const updatedUser = await api.postFormData("/api/users/me/avatar", formData);
       updateUser(updatedUser);
       setSuccess("Avatar updated successfully!");
     } catch (err: unknown) {

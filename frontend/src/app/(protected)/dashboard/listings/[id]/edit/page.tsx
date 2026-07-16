@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, ChangeEvent } from "react";
+import { useState, useEffect, useRef, ChangeEvent, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -30,15 +30,16 @@ const editPromptSchema = z.object({
 
 type EditPromptValues = z.infer<typeof editPromptSchema>;
 
-export default function EditListingPage({ params }: { params: { id: string } }) {
+export default function EditListingPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const router = useRouter();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
 
   const { data: categories, isLoading: categoriesLoading } = useCategories();
-  const { data: prompt, isLoading: promptLoading } = usePrompt(params.id);
-  const updatePromptMutation = useUpdatePrompt(params.id);
+  const { data: prompt, isLoading: promptLoading } = usePrompt(id);
+  const updatePromptMutation = useUpdatePrompt(id);
 
   const {
     register,
