@@ -10,6 +10,20 @@ jobs:
   backend:
     name: Backend
     runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:15
+        env:
+          POSTGRES_USER: promptvault
+          POSTGRES_PASSWORD: promptvault
+          POSTGRES_DB: promptvault
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     defaults:
       run:
         working-directory: backend
@@ -28,6 +42,11 @@ jobs:
 
       - name: Lint with ruff
         run: ruff check .
+
+      - name: Run database migrations
+        run: alembic upgrade head
+        env:
+          DATABASE_URL: postgresql+asyncpg://promptvault:promptvault@localhost:5433/promptvault
 
       - name: Run tests
         run: pytest tests/ -v
