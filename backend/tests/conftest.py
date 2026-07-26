@@ -19,11 +19,11 @@ elif not os.path.exists("/.dockerenv") and "@db:5432" in os.environ.get(
     )
 
 from app.db.session import engine
-from app.main import app
-
+from app.main import _seed_categories_if_empty, app
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def cleanup_engine():
+    await _seed_categories_if_empty()
     yield
     await engine.dispose()
 
