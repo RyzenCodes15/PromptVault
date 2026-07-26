@@ -47,6 +47,7 @@ jobs:
         run: alembic upgrade head
         env:
           DATABASE_URL: postgresql+asyncpg://promptvault:promptvault@localhost:5433/promptvault
+          PYTHONPATH: .
 
       - name: Run tests
         run: pytest tests/ -v
