@@ -1,10 +1,13 @@
 """Authentication and user business logic."""
 
-from typing import Tuple
-
 from fastapi import HTTPException, status
 
-from app.core.security import create_access_token, create_refresh_token, get_password_hash, verify_password
+from app.core.security import (
+    create_access_token,
+    create_refresh_token,
+    get_password_hash,
+    verify_password,
+)
 from app.models.user import User
 from app.repositories.user_repository import UserRepository
 from app.schemas.token import Token
@@ -37,7 +40,7 @@ class AuthService:
         )
         return await self.user_repo.create(user)
 
-    async def authenticate_user(self, user_in: UserLogin) -> Tuple[User, Token]:
+    async def authenticate_user(self, user_in: UserLogin) -> tuple[User, Token]:
         """Authenticate user and return tokens."""
         user = await self.user_repo.get_by_email(user_in.email)
         if not user or not verify_password(user_in.password, user.hashed_password):

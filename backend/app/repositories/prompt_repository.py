@@ -1,8 +1,8 @@
 """Prompt repository."""
 
 import uuid
-from typing import List, Optional, Tuple
-from sqlalchemy import select, or_, func, desc
+
+from sqlalchemy import desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -29,7 +29,7 @@ class PromptRepository:
         result = await self.session.execute(stmt)
         return result.scalar_one()
 
-    async def get_by_id(self, prompt_id: uuid.UUID) -> Optional[Prompt]:
+    async def get_by_id(self, prompt_id: uuid.UUID) -> Prompt | None:
         """Get a prompt by ID."""
         stmt = (
             select(Prompt)
@@ -42,21 +42,21 @@ class PromptRepository:
 
     async def search(
         self,
-        search_query: Optional[str] = None,
-        category_id: Optional[uuid.UUID] = None,
-        seller_id: Optional[uuid.UUID] = None,
+        search_query: str | None = None,
+        category_id: uuid.UUID | None = None,
+        seller_id: uuid.UUID | None = None,
         page: int = 1,
         limit: int = 12,
-    ) -> Tuple[List[Prompt], int]:
+    ) -> tuple[list[Prompt], int]:
         """Search and paginate prompts."""
         base_stmt = select(Prompt).where(Prompt.status == PromptStatus.active)
-        
+
         if category_id:
             base_stmt = base_stmt.where(Prompt.category_id == category_id)
-        
+
         if seller_id:
             base_stmt = base_stmt.where(Prompt.seller_id == seller_id)
-            
+
         if search_query:
             search_term = f"%{search_query}%"
             base_stmt = base_stmt.where(
@@ -73,13 +73,14 @@ class PromptRepository:
 
         # Get paginated items
         items_stmt = (
-            base_stmt
-            .options(selectinload(Prompt.seller), selectinload(Prompt.category))
+            base_stmt.options(
+                selectinload(Prompt.seller), selectinload(Prompt.category)
+            )
             .order_by(desc(Prompt.created_at))
             .offset((page - 1) * limit)
             .limit(limit)
         )
-        
+
         items_result = await self.session.execute(items_stmt)
         items = list(items_result.scalars().all())
 
@@ -88,21 +89,24 @@ class PromptRepository:
     async def get_seller_prompts(
         self,
         seller_id: uuid.UUID,
-        search_query: Optional[str] = None,
-        category_id: Optional[uuid.UUID] = None,
-        status: Optional[PromptStatus] = None,
+        search_query: str | None = None,
+        category_id: uuid.UUID | None = None,
+        status: PromptStatus | None = None,
         page: int = 1,
         limit: int = 12,
-    ) -> Tuple[List[Prompt], int]:
-        """Get prompts for a seller (includes all non-deleted statuses unless specified)."""
+    ) -> tuple[list[Prompt], int]:
+        """
+        Get prompts for a seller (includes all non-deleted statuses
+        unless specified).
+        """
         base_stmt = select(Prompt).where(Prompt.seller_id == seller_id)
-        
+
         if status:
             base_stmt = base_stmt.where(Prompt.status == status)
-        
+
         if category_id:
             base_stmt = base_stmt.where(Prompt.category_id == category_id)
-            
+
         if search_query:
             search_term = f"%{search_query}%"
             base_stmt = base_stmt.where(
@@ -119,13 +123,14 @@ class PromptRepository:
 
         # Get paginated items
         items_stmt = (
-            base_stmt
-            .options(selectinload(Prompt.seller), selectinload(Prompt.category))
+            base_stmt.options(
+                selectinload(Prompt.seller), selectinload(Prompt.category)
+            )
             .order_by(desc(Prompt.created_at))
             .offset((page - 1) * limit)
             .limit(limit)
         )
-        
+
         items_result = await self.session.execute(items_stmt)
         items = list(items_result.scalars().all())
 

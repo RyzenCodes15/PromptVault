@@ -1,6 +1,5 @@
 """Category repository."""
 
-from typing import List
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,7 +12,7 @@ class CategoryRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_all(self) -> List[Category]:
+    async def get_all(self) -> list[Category]:
         """Get all categories."""
         stmt = select(Category).order_by(Category.name)
         result = await self.session.execute(stmt)

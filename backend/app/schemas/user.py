@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from typing import Optional, Any
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
@@ -14,10 +14,11 @@ class UserBase(BaseModel):
 
     name: str = Field(..., min_length=2, max_length=100)
     email: EmailStr
-    bio: Optional[str] = Field(None, max_length=500)
-    avatar_url: Optional[str] = None
+    bio: str | None = Field(None, max_length=500)
+    avatar_url: str | None = None
 
     @field_validator("email", mode="before")
+    @classmethod
     def lowercase_email(cls, v: Any) -> Any:
         if isinstance(v, str):
             return v.lower()
@@ -34,8 +35,8 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     """Properties to receive via API on update."""
 
-    name: Optional[str] = Field(None, min_length=2, max_length=100)
-    bio: Optional[str] = Field(None, max_length=500)
+    name: str | None = Field(None, min_length=2, max_length=100)
+    bio: str | None = Field(None, max_length=500)
 
 
 class UserLogin(BaseModel):

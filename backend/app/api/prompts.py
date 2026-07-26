@@ -1,8 +1,17 @@
 """Prompts API router."""
 
 import uuid
-from typing import Optional
-from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException, status, Response
+
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Query,
+    Response,
+    UploadFile,
+    status,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_optional_user
@@ -10,9 +19,14 @@ from app.core.config import get_settings
 from app.db.session import get_db_session
 from app.integrations.cloudinary import CloudinaryService
 from app.models.user import User
-from app.schemas.prompt import PromptCreate, PromptUpdate, PromptRead, PaginatedPromptRead
-from app.services.prompt_service import PromptService
+from app.schemas.prompt import (
+    PaginatedPromptRead,
+    PromptCreate,
+    PromptRead,
+    PromptUpdate,
+)
 from app.services.order_service import OrderService
+from app.services.prompt_service import PromptService
 
 settings = get_settings()
 
@@ -33,9 +47,9 @@ async def create_prompt(
 
 @router.get("", response_model=PaginatedPromptRead)
 async def search_prompts(
-    q: Optional[str] = Query(None, description="Search query"),
-    category_id: Optional[uuid.UUID] = Query(None, description="Filter by category ID"),
-    seller_id: Optional[uuid.UUID] = Query(None, description="Filter by seller ID"),
+    q: str | None = Query(None, description="Search query"),
+    category_id: uuid.UUID | None = Query(None, description="Filter by category ID"),
+    seller_id: uuid.UUID | None = Query(None, description="Filter by seller ID"),
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(12, ge=1, le=50, description="Items per page"),
     session: AsyncSession = Depends(get_db_session),
@@ -59,9 +73,9 @@ async def search_prompts(
 
 @router.get("/me", response_model=PaginatedPromptRead)
 async def get_my_prompts(
-    q: Optional[str] = Query(None, description="Search query"),
-    category_id: Optional[uuid.UUID] = Query(None, description="Filter by category ID"),
-    status: Optional[str] = Query(None, description="Filter by status"),
+    q: str | None = Query(None, description="Search query"),
+    category_id: uuid.UUID | None = Query(None, description="Filter by category ID"),
+    status: str | None = Query(None, description="Filter by status"),
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(12, ge=1, le=50, description="Items per page"),
     current_user: User = Depends(get_current_user),
@@ -149,7 +163,9 @@ async def upload_prompt_image(
 ):
     """Upload a cover image for a prompt."""
     if current_user.role != "seller":
-        raise HTTPException(status_code=403, detail="Only sellers can upload prompt images.")
+        raise HTTPException(
+            status_code=403, detail="Only sellers can upload prompt images."
+        )
 
     contents = await file.read()
 
@@ -186,7 +202,9 @@ async def upload_prompt_image(
         import uuid as _uuid
         from pathlib import Path
 
-        uploads_dir = Path(__file__).resolve().parent.parent.parent / "uploads" / "prompts"
+        uploads_dir = (
+            Path(__file__).resolve().parent.parent.parent / "uploads" / "prompts"
+        )
         uploads_dir.mkdir(parents=True, exist_ok=True)
 
         # Determine file extension
@@ -207,4 +225,3 @@ async def upload_prompt_image(
         # Return URL served by the backend
         backend_url = settings.backend_url.rstrip("/")
         return {"url": f"{backend_url}/api/uploads/prompts/{filename}"}
-

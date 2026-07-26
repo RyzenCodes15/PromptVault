@@ -1,6 +1,10 @@
-"""Tests for prompt category display, prompt text visibility security, and delete functionality."""
+"""
+Tests for prompt category display, prompt text visibility security,
+and delete functionality.
+"""
 
 import uuid
+
 import pytest
 from httpx import AsyncClient
 
@@ -38,13 +42,19 @@ async def test_prompt_category_and_security(client: AsyncClient):
     # 3. Create a prompt as seller
     prompt_create = {
         "title": "Secret AI Prompt Masterclass",
-        "short_description": "An incredible prompt for generating top quality assets.",
-        "full_description": "Detailed instructions on how to use this amazing secret prompt.",
+        "short_description": (
+            "An incredible prompt for generating top quality assets."
+        ),
+        "full_description": (
+            "Detailed instructions on how to use this amazing secret prompt."
+        ),
         "category_id": category_id,
         "price": 29.99,
         "prompt_text": "ACT AS A MASTER AI CREATOR AND DO TOP SECRET WORK...",
     }
-    create_res = await client.post("/api/prompts", json=prompt_create, headers=seller_headers)
+    create_res = await client.post(
+        "/api/prompts", json=prompt_create, headers=seller_headers
+    )
     assert create_res.status_code in (200, 201)
     created_prompt = create_res.json()
     prompt_id = created_prompt["id"]
@@ -61,7 +71,9 @@ async def test_prompt_category_and_security(client: AsyncClient):
     search_res = await client.get("/api/prompts")
     assert search_res.status_code == 200
     search_data = search_res.json()
-    found_item = next((item for item in search_data["items"] if item["id"] == prompt_id), None)
+    found_item = next(
+        (item for item in search_data["items"] if item["id"] == prompt_id), None
+    )
     assert found_item is not None
     # Category should strictly be { id, name }
     assert set(found_item["category"].keys()) == {"id", "name"}
@@ -94,7 +106,9 @@ async def test_prompt_category_and_security(client: AsyncClient):
     buyer_token = buyer_login.json()["access_token"]
     buyer_headers = {"Authorization": f"Bearer {buyer_token}"}
 
-    buyer_detail_res = await client.get(f"/api/prompts/{prompt_id}", headers=buyer_headers)
+    buyer_detail_res = await client.get(
+        f"/api/prompts/{prompt_id}", headers=buyer_headers
+    )
     assert buyer_detail_res.status_code == 200
     buyer_detail = buyer_detail_res.json()
     assert buyer_detail["category"]["name"] == category_name
@@ -102,11 +116,15 @@ async def test_prompt_category_and_security(client: AsyncClient):
     assert buyer_detail["prompt_text"] is None
 
     # Buyer attempts to DELETE listing -> must be forbidden (403)
-    buyer_delete_res = await client.delete(f"/api/prompts/{prompt_id}", headers=buyer_headers)
+    buyer_delete_res = await client.delete(
+        f"/api/prompts/{prompt_id}", headers=buyer_headers
+    )
     assert buyer_delete_res.status_code == 403
 
     # 7. Owner/Seller access to Product Detail (GET /api/prompts/{id})
-    owner_detail_res = await client.get(f"/api/prompts/{prompt_id}", headers=seller_headers)
+    owner_detail_res = await client.get(
+        f"/api/prompts/{prompt_id}", headers=seller_headers
+    )
     assert owner_detail_res.status_code == 200
     owner_detail = owner_detail_res.json()
     assert owner_detail["category"]["name"] == category_name
@@ -123,7 +141,9 @@ async def test_prompt_category_and_security(client: AsyncClient):
     assert me_item["prompt_text"] == prompt_create["prompt_text"]
 
     # 9. Owner DELETES listing -> must return 204 No Content
-    owner_delete_res = await client.delete(f"/api/prompts/{prompt_id}", headers=seller_headers)
+    owner_delete_res = await client.delete(
+        f"/api/prompts/{prompt_id}", headers=seller_headers
+    )
     assert owner_delete_res.status_code == 204
 
     # Verify listing is removed everywhere
@@ -146,7 +166,10 @@ async def test_prompt_category_and_security(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_prompt_text_security_after_data_reset_simulation(client: AsyncClient):
-    """Verify that when orders/purchase tables are empty (simulating database reset), prompt_text is strictly redacted for non-owners."""
+    """
+    Verify that when orders/purchase tables are empty (simulating database reset),
+    prompt_text is strictly redacted for non-owners.
+    """
     uid = uuid.uuid4().hex[:8]
     cat_res = await client.get("/api/categories")
     category_id = cat_res.json()[0]["id"]
@@ -167,13 +190,17 @@ async def test_prompt_text_security_after_data_reset_simulation(client: AsyncCli
 
     prompt_create = {
         "title": "Reset Test Secret Prompt",
-        "short_description": "Testing prompt protection when purchase tables are wiped.",
+        "short_description": (
+            "Testing prompt protection when purchase tables are wiped."
+        ),
         "full_description": "Full description of reset test secret prompt.",
         "category_id": category_id,
         "price": 49.99,
         "prompt_text": "THIS PROMPT TEXT MUST NEVER LEAK AFTER RESET",
     }
-    create_res = await client.post("/api/prompts", json=prompt_create, headers=seller_headers)
+    create_res = await client.post(
+        "/api/prompts", json=prompt_create, headers=seller_headers
+    )
     prompt_id = create_res.json()["id"]
 
     # Register buyer
@@ -196,26 +223,33 @@ async def test_prompt_text_security_after_data_reset_simulation(client: AsyncCli
     assert anon_res.status_code == 200
     assert anon_res.json()["prompt_text"] is None
 
-    # 2. Buyer check on product details (with empty order/purchase records for this prompt)
+    # 2. Buyer check on product details (with empty order/purchase records
+    # for this prompt)
     buyer_res = await client.get(f"/api/prompts/{prompt_id}", headers=buyer_headers)
     assert buyer_res.status_code == 200
     assert buyer_res.json()["prompt_text"] is None
 
     # 3. Buyer check on check-purchase status
-    check_res = await client.get(f"/api/orders/check-purchase/{prompt_id}", headers=buyer_headers)
+    check_res = await client.get(
+        f"/api/orders/check-purchase/{prompt_id}", headers=buyer_headers
+    )
     assert check_res.status_code == 200
     assert check_res.json()["is_purchased"] is False
     assert check_res.json()["is_owner"] is False
 
     # 4. Buyer check on download endpoint -> must be 403 Forbidden
-    dl_res = await client.get(f"/api/prompts/{prompt_id}/download", headers=buyer_headers)
+    dl_res = await client.get(
+        f"/api/prompts/{prompt_id}/download", headers=buyer_headers
+    )
     assert dl_res.status_code == 403
 
     # 5. Seller/owner check -> must see prompt_text
     owner_res = await client.get(f"/api/prompts/{prompt_id}", headers=seller_headers)
     assert owner_res.status_code == 200
-    assert owner_res.json()["prompt_text"] == "THIS PROMPT TEXT MUST NEVER LEAK AFTER RESET"
+    assert (
+        owner_res.json()["prompt_text"]
+        == "THIS PROMPT TEXT MUST NEVER LEAK AFTER RESET"
+    )
 
     # Clean up
     await client.delete(f"/api/prompts/{prompt_id}", headers=seller_headers)
-

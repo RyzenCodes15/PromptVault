@@ -1,6 +1,6 @@
 """Health check endpoint."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter
 from sqlalchemy import text
@@ -27,5 +27,5 @@ async def health_check() -> dict:
     return {
         "status": status,
         "database": db_status,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }

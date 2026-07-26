@@ -1,6 +1,8 @@
 import uuid
+
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
+
 from app.main import app
 
 
@@ -10,7 +12,9 @@ async def test_order_checkout_webhook_and_download_flow():
     seller_email = f"seller_order_{suffix}@example.com"
     buyer_email = f"buyer_order_{suffix}@example.com"
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
         # 1. Register Seller and Create a Prompt
         seller_resp = await ac.post(
             "/api/auth/register",
@@ -44,8 +48,12 @@ async def test_order_checkout_webhook_and_download_flow():
             headers=seller_headers,
             json={
                 "title": "Secret AI Prompt",
-                "short_description": "An amazing secret prompt for testing orders and downloads.",
-                "full_description": "Full details of the secret AI prompt that solves complex logic.",
+                "short_description": (
+                    "An amazing secret prompt for testing orders and downloads."
+                ),
+                "full_description": (
+                    "Full details of the secret AI prompt that solves complex logic."
+                ),
                 "category_id": category_id,
                 "price": 499.0,
                 "prompt_text": "YOU ARE A SUPER AI AGENT. SOLVE ALL TASKS.",
@@ -105,14 +113,18 @@ async def test_order_checkout_webhook_and_download_flow():
         assert unauth_dl_resp.status_code == 403
 
         # Buyer checks prompt details -> prompt_text should be redacted (None)
-        get_prompt_resp = await ac.get(f"/api/prompts/{prompt_id}", headers=buyer_headers)
+        get_prompt_resp = await ac.get(
+            f"/api/prompts/{prompt_id}", headers=buyer_headers
+        )
         assert get_prompt_resp.status_code == 200
         assert get_prompt_resp.json()["prompt_text"] is None
         assert get_prompt_resp.json()["is_purchased"] is False
 
         # Sellers cannot buy prompts
         seller_checkout_resp = await ac.post(
-            "/api/orders/checkout", headers=seller_headers, json={"prompt_id": prompt_id}
+            "/api/orders/checkout",
+            headers=seller_headers,
+            json={"prompt_id": prompt_id},
         )
         assert seller_checkout_resp.status_code == 403
 
@@ -128,11 +140,14 @@ async def test_order_checkout_webhook_and_download_flow():
         session_id = checkout_data["session_id"]
 
         # Because we are in mock/dev mode, checkout auto-completed!
-        # If real keys are configured in local .env, we manually trigger the verified webhook to complete it.
+        # If real keys are configured in local .env, we manually trigger
+        # the verified webhook to complete it.
         if not session_id.startswith("cs_test_mock_"):
-            import time
             import json
+            import time
+
             import stripe
+
             from app.core.config import get_settings
 
             settings = get_settings()
@@ -152,18 +167,27 @@ async def test_order_checkout_webhook_and_download_flow():
             }
             payload_bytes = json.dumps(payload_dict).encode("utf-8")
             webhook_secret = settings.stripe_webhook_secret or "whsec_test_secret"
-            sig = stripe.WebhookSignature._compute_signature(f"{ts}.{payload_bytes.decode('utf-8')}", webhook_secret)
+            sig = stripe.WebhookSignature._compute_signature(
+                f"{ts}.{payload_bytes.decode('utf-8')}", webhook_secret
+            )
             valid_signature = f"t={ts},v1={sig}"
 
             webhook_resp = await ac.post(
-                "/api/orders/webhook", content=payload_bytes, headers={"Stripe-Signature": valid_signature}
+                "/api/orders/webhook",
+                content=payload_bytes,
+                headers={"Stripe-Signature": valid_signature},
             )
             assert webhook_resp.status_code == 200
 
         # 4. Buyer checks prompt details now -> prompt_text should be UNLOCKED
-        get_prompt_after = await ac.get(f"/api/prompts/{prompt_id}", headers=buyer_headers)
+        get_prompt_after = await ac.get(
+            f"/api/prompts/{prompt_id}", headers=buyer_headers
+        )
         assert get_prompt_after.status_code == 200
-        assert get_prompt_after.json()["prompt_text"] == "YOU ARE A SUPER AI AGENT. SOLVE ALL TASKS."
+        assert (
+            get_prompt_after.json()["prompt_text"]
+            == "YOU ARE A SUPER AI AGENT. SOLVE ALL TASKS."
+        )
         assert get_prompt_after.json()["is_purchased"] is True
 
         # Buyer can now download the prompt file
@@ -175,7 +199,9 @@ async def test_order_checkout_webhook_and_download_flow():
         assert "attachment" in buyer_dl_resp.headers["Content-Disposition"]
 
         # Buyer checks my-purchases history
-        my_purchases_resp = await ac.get("/api/orders/my-purchases", headers=buyer_headers)
+        my_purchases_resp = await ac.get(
+            "/api/orders/my-purchases", headers=buyer_headers
+        )
         assert my_purchases_resp.status_code == 200
         purchases_data = my_purchases_resp.json()
         assert purchases_data["total"] == 1
@@ -195,11 +221,16 @@ async def test_order_checkout_webhook_and_download_flow():
 
 @pytest.mark.asyncio
 async def test_real_stripe_checkout_and_webhook_verification(monkeypatch):
-    """Test real Stripe checkout session creation (mock mode disabled) and ensure order status
-    strictly remains pending until a cryptographically verified webhook arrives."""
+    """
+    Test real Stripe checkout session creation (mock mode disabled)
+    and ensure order status
+    strictly remains pending until a cryptographically verified webhook arrives.
+    """
     import json
     import time
+
     import stripe
+
     from app.core.config import get_settings
     from app.integrations.stripe import StripeService
 
@@ -213,7 +244,8 @@ async def test_real_stripe_checkout_and_webhook_verification(monkeypatch):
     suffix = uuid.uuid4().hex[:8]
     unique_session_id = f"cs_test_real_{uuid.uuid4().hex}"
 
-    # Mock stripe.checkout.Session.create_async so we don't make real network calls during pytest
+    # Mock stripe.checkout.Session.create_async so we don't make real network
+    # calls during pytest
     async def mock_create_async(**kwargs):
         return stripe.checkout.Session.construct_from(
             {
@@ -230,13 +262,25 @@ async def test_real_stripe_checkout_and_webhook_verification(monkeypatch):
     seller_email = f"seller_real_{suffix}@example.com"
     buyer_email = f"buyer_real_{suffix}@example.com"
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
         # 1. Register Seller & Create Prompt
         await ac.post(
             "/api/auth/register",
-            json={"email": seller_email, "password": "Password123!", "name": "Seller Real", "role": "seller"},
+            json={
+                "email": seller_email,
+                "password": "Password123!",
+                "name": "Seller Real",
+                "role": "seller",
+            },
         )
-        seller_token = (await ac.post("/api/auth/login", json={"email": seller_email, "password": "Password123!"})).json()["access_token"]
+        seller_token = (
+            await ac.post(
+                "/api/auth/login",
+                json={"email": seller_email, "password": "Password123!"},
+            )
+        ).json()["access_token"]
         seller_headers = {"Authorization": f"Bearer {seller_token}"}
 
         category_id = (await ac.get("/api/categories")).json()[0]["id"]
@@ -257,9 +301,19 @@ async def test_real_stripe_checkout_and_webhook_verification(monkeypatch):
         # 2. Register Buyer
         await ac.post(
             "/api/auth/register",
-            json={"email": buyer_email, "password": "Password123!", "name": "Buyer Real", "role": "buyer"},
+            json={
+                "email": buyer_email,
+                "password": "Password123!",
+                "name": "Buyer Real",
+                "role": "buyer",
+            },
         )
-        buyer_token = (await ac.post("/api/auth/login", json={"email": buyer_email, "password": "Password123!"})).json()["access_token"]
+        buyer_token = (
+            await ac.post(
+                "/api/auth/login",
+                json={"email": buyer_email, "password": "Password123!"},
+            )
+        ).json()["access_token"]
         buyer_headers = {"Authorization": f"Bearer {buyer_token}"}
 
         # 3. Buyer initiates checkout
@@ -271,15 +325,22 @@ async def test_real_stripe_checkout_and_webhook_verification(monkeypatch):
         assert checkout_data["session_id"] == unique_session_id
         order_id = checkout_data["order_id"]
 
-        # 4. Verify order is STILL PENDING right after checkout (no auto-completion without webhook)
-        check_before = await ac.get(f"/api/orders/check-purchase/{prompt_id}", headers=buyer_headers)
+        # 4. Verify order is STILL PENDING right after checkout
+        # (no auto-completion without webhook)
+        check_before = await ac.get(
+            f"/api/orders/check-purchase/{prompt_id}", headers=buyer_headers
+        )
         assert check_before.json() == {"is_purchased": False, "is_owner": False}
 
-        get_prompt_before = await ac.get(f"/api/prompts/{prompt_id}", headers=buyer_headers)
+        get_prompt_before = await ac.get(
+            f"/api/prompts/{prompt_id}", headers=buyer_headers
+        )
         assert get_prompt_before.json()["prompt_text"] is None
         assert get_prompt_before.json()["is_purchased"] is False
 
-        unauth_dl_before = await ac.get(f"/api/prompts/{prompt_id}/download", headers=buyer_headers)
+        unauth_dl_before = await ac.get(
+            f"/api/prompts/{prompt_id}/download", headers=buyer_headers
+        )
         assert unauth_dl_before.status_code == 403
 
         # 5. Construct webhook payload
@@ -306,30 +367,47 @@ async def test_real_stripe_checkout_and_webhook_verification(monkeypatch):
 
         # Test sending with invalid signature -> 400 Bad Request
         invalid_sig_resp = await ac.post(
-            "/api/orders/webhook", content=payload_bytes, headers={"Stripe-Signature": "t=123,v1=invalid_signature"}
+            "/api/orders/webhook",
+            content=payload_bytes,
+            headers={"Stripe-Signature": "t=123,v1=invalid_signature"},
         )
         assert invalid_sig_resp.status_code == 400
         assert "Invalid signature" in invalid_sig_resp.text
 
         # Verify order is STILL locked
-        assert (await ac.get(f"/api/orders/check-purchase/{prompt_id}", headers=buyer_headers)).json()["is_purchased"] is False
+        assert (
+            await ac.get(
+                f"/api/orders/check-purchase/{prompt_id}", headers=buyer_headers
+            )
+        ).json()["is_purchased"] is False
 
         # Compute valid signature
-        sig = stripe.WebhookSignature._compute_signature(f"{ts}.{payload_bytes.decode('utf-8')}", webhook_secret)
+        sig = stripe.WebhookSignature._compute_signature(
+            f"{ts}.{payload_bytes.decode('utf-8')}", webhook_secret
+        )
         valid_signature = f"t={ts},v1={sig}"
 
         # 6. Send verified webhook
         valid_resp = await ac.post(
-            "/api/orders/webhook", content=payload_bytes, headers={"Stripe-Signature": valid_signature}
+            "/api/orders/webhook",
+            content=payload_bytes,
+            headers={"Stripe-Signature": valid_signature},
         )
         assert valid_resp.status_code == 200
         assert valid_resp.json() == {"status": "success"}
 
         # 7. Verify prompt is now UNLOCKED and downloadable
-        get_prompt_after = await ac.get(f"/api/prompts/{prompt_id}", headers=buyer_headers)
+        get_prompt_after = await ac.get(
+            f"/api/prompts/{prompt_id}", headers=buyer_headers
+        )
         assert get_prompt_after.json()["is_purchased"] is True
-        assert get_prompt_after.json()["prompt_text"] == "UNLOCKED AFTER VERIFIED WEBHOOK ONLY"
+        assert (
+            get_prompt_after.json()["prompt_text"]
+            == "UNLOCKED AFTER VERIFIED WEBHOOK ONLY"
+        )
 
-        buyer_dl_after = await ac.get(f"/api/prompts/{prompt_id}/download", headers=buyer_headers)
+        buyer_dl_after = await ac.get(
+            f"/api/prompts/{prompt_id}/download", headers=buyer_headers
+        )
         assert buyer_dl_after.status_code == 200
         assert buyer_dl_after.text == "UNLOCKED AFTER VERIFIED WEBHOOK ONLY"

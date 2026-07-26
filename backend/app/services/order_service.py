@@ -1,7 +1,8 @@
 """Order service layer."""
 
 import uuid
-from typing import Any, Optional
+from typing import Any
+
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -45,7 +46,9 @@ class OrderService:
             webhook_secret=settings.stripe_webhook_secret,
         )
 
-    async def create_checkout_session(self, user: User, prompt_id: uuid.UUID) -> CheckoutResponse:
+    async def create_checkout_session(
+        self, user: User, prompt_id: uuid.UUID
+    ) -> CheckoutResponse:
         """Initiate a purchase by creating an Order and Stripe Checkout Session."""
         if user.role != UserRole.buyer:
             raise HTTPException(
@@ -99,8 +102,14 @@ class OrderService:
 
         # Create Stripe Checkout Session
         frontend_url = settings.frontend_url.rstrip("/")
-        success_url = f"{frontend_url}/marketplace/orders/success?session_id={{CHECKOUT_SESSION_ID}}"
-        cancel_url = f"{frontend_url}/marketplace/orders/cancel?session_id={{CHECKOUT_SESSION_ID}}"
+        success_url = (
+            f"{frontend_url}/marketplace/orders/success"
+            "?session_id={CHECKOUT_SESSION_ID}"
+        )
+        cancel_url = (
+            f"{frontend_url}/marketplace/orders/cancel"
+            "?session_id={CHECKOUT_SESSION_ID}"
+        )
 
         stripe_session = await self.stripe_service.create_checkout_session(
             price_amount=prompt.price,
@@ -120,7 +129,8 @@ class OrderService:
         order.stripe_checkout_session_id = stripe_session["id"]
         await self.repository.update_order(order)
 
-        # If in mock mode, automatically fulfill order so developers/reviewers can test without tunneling
+        # If in mock mode, automatically fulfill order so developers/reviewers
+        # can test without tunneling
         if stripe_session["id"].startswith("cs_test_mock_"):
             order.status = OrderStatus.completed
             if order.payment:
@@ -154,33 +164,50 @@ class OrderService:
             metadata = _get_val(data_object, "metadata", {})
             order_id_str = _get_val(metadata, "order_id")
 
-        if event_type in ("checkout.session.completed", "checkout.session.async_payment_succeeded") or (not event_type and session_id.startswith("cs_test_mock_")):
-            order: Optional[Order] = None
+        if event_type in (
+            "checkout.session.completed",
+            "checkout.session.async_payment_succeeded",
+        ) or (not event_type and session_id.startswith("cs_test_mock_")):
+            order: Order | None = None
             if order_id_str:
                 try:
-                    order = await self.repository.get_order_by_id(uuid.UUID(order_id_str))
+                    order = await self.repository.get_order_by_id(
+                        uuid.UUID(order_id_str)
+                    )
                 except ValueError:
                     pass
             if not order and session_id:
-                order = await self.repository.get_order_by_checkout_session_id(session_id)
+                order = await self.repository.get_order_by_checkout_session_id(
+                    session_id
+                )
 
             if order and order.status != OrderStatus.completed:
                 order.status = OrderStatus.completed
                 if order.payment:
                     order.payment.status = PaymentStatus.succeeded
-                    payment_intent = _get_val(data_object, "payment_intent") or f"pi_mock_{uuid.uuid4().hex}"
+                    payment_intent = (
+                        _get_val(data_object, "payment_intent")
+                        or f"pi_mock_{uuid.uuid4().hex}"
+                    )
                     order.payment.stripe_payment_intent_id = payment_intent
                 await self.repository.update_order(order)
 
-        elif event_type in ["checkout.session.async_payment_failed", "checkout.session.expired"]:
+        elif event_type in [
+            "checkout.session.async_payment_failed",
+            "checkout.session.expired",
+        ]:
             order = None
             if order_id_str:
                 try:
-                    order = await self.repository.get_order_by_id(uuid.UUID(order_id_str))
+                    order = await self.repository.get_order_by_id(
+                        uuid.UUID(order_id_str)
+                    )
                 except ValueError:
                     pass
             if not order and session_id:
-                order = await self.repository.get_order_by_checkout_session_id(session_id)
+                order = await self.repository.get_order_by_checkout_session_id(
+                    session_id
+                )
 
             if order:
                 order.status = OrderStatus.failed
@@ -205,7 +232,11 @@ class OrderService:
 
         item_reads = []
         for item in items:
-            category_name = item.prompt.category.name if item.prompt and item.prompt.category else "Uncategorized"
+            category_name = (
+                item.prompt.category.name
+                if item.prompt and item.prompt.category
+                else "Uncategorized"
+            )
             prompt_title = item.prompt.title if item.prompt else "Deleted Prompt"
             prompt_short_desc = item.prompt.short_description if item.prompt else ""
             prompt_image = item.prompt.cover_image_url if item.prompt else None
@@ -246,7 +277,11 @@ class OrderService:
                 detail="Only sellers can access sales statistics.",
             )
 
-        sales_count, total_revenue, recent_items = await self.repository.get_seller_sales_stats(user.id)
+        (
+            sales_count,
+            total_revenue,
+            recent_items,
+        ) = await self.repository.get_seller_sales_stats(user.id)
 
         latest = []
         for item in recent_items:
@@ -267,7 +302,9 @@ class OrderService:
         )
 
     async def verify_download_access(self, user: User, prompt_id: uuid.UUID) -> str:
-        """Verify ownership/purchase access and return prompt text content for download."""
+        """
+        Verify ownership/purchase access and return prompt text content for download.
+        """
         prompt = await self.prompt_repo.get_by_id(prompt_id)
         if not prompt:
             raise HTTPException(
@@ -281,7 +318,9 @@ class OrderService:
 
         # Buyers must have completed purchase
         if user.role == UserRole.buyer:
-            has_purchased = await self.repository.has_purchased_prompt(user.id, prompt_id)
+            has_purchased = await self.repository.has_purchased_prompt(
+                user.id, prompt_id
+            )
             if has_purchased:
                 return prompt.prompt_text or ""
 

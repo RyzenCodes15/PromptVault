@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from typing import List, Optional
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.order import OrderStatus
@@ -33,10 +33,10 @@ class OrderItemRead(BaseModel):
     created_at: datetime
     prompt_title: str
     prompt_short_description: str
-    prompt_cover_image_url: Optional[str] = None
+    prompt_cover_image_url: str | None = None
     prompt_category_name: str
     seller_name: str
-    seller_avatar_url: Optional[str] = None
+    seller_avatar_url: str | None = None
     order_status: OrderStatus
 
     model_config = ConfigDict(from_attributes=True)
@@ -45,7 +45,7 @@ class OrderItemRead(BaseModel):
 class PaginatedPurchasesRead(BaseModel):
     """Paginated list of buyer purchases."""
 
-    items: List[OrderItemRead]
+    items: list[OrderItemRead]
     total: int
     page: int
     limit: int
@@ -68,4 +68,4 @@ class SellerStatsResponse(BaseModel):
 
     sales_count: int
     total_revenue: float
-    latest_orders: List[SellerSaleItemRead]
+    latest_orders: list[SellerSaleItemRead]

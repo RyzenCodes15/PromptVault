@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
 from app.api.router import api_router
 from app.core.config import get_settings
@@ -13,7 +13,6 @@ from app.core.exceptions import register_exception_handlers
 from app.db.session import async_session_factory
 from app.middleware.logging import RequestLoggingMiddleware
 from app.models.category import Category
-
 
 logger = logging.getLogger(__name__)
 
@@ -32,15 +31,15 @@ SEED_CATEGORIES = [
 async def _seed_categories_if_empty() -> None:
     """Seed the categories table when it is empty."""
     async with async_session_factory() as session:
-        count_result = await session.execute(
-            select(func.count()).select_from(Category)
-        )
+        count_result = await session.execute(select(func.count()).select_from(Category))
         count = count_result.scalar_one()
         if count > 0:
             logger.info("Categories already seeded (%d found).", count)
             return
 
-        logger.info("No categories found – seeding %d categories…", len(SEED_CATEGORIES))
+        logger.info(
+            "No categories found – seeding %d categories…", len(SEED_CATEGORIES)
+        )
         for cat_data in SEED_CATEGORIES:
             session.add(Category(**cat_data))
         await session.commit()

@@ -1,10 +1,9 @@
 """Tests for authentication endpoints."""
 
 import uuid
+
 import pytest
 from httpx import AsyncClient
-
-from app.models.user import User
 
 
 @pytest.mark.asyncio
@@ -117,4 +116,6 @@ async def test_protected_route_me(client: AsyncClient):
 async def test_protected_route_without_token(client: AsyncClient):
     """Test accessing a protected route without token."""
     response = await client.get("/api/users/me")
-    assert response.status_code == 403  # HTTPBearer returns 403 when no auth is provided
+    assert (
+        response.status_code == 403
+    )  # HTTPBearer returns 403 when no auth is provided

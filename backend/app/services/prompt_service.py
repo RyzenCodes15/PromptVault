@@ -1,9 +1,9 @@
 """Prompt service layer."""
 
 import uuid
-from typing import List, Optional, Tuple
-from sqlalchemy.ext.asyncio import AsyncSession
+
 from fastapi import HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.prompt import Prompt
 from app.models.user import User, UserRole
@@ -40,8 +40,13 @@ class PromptService:
         )
         return await self.repository.create(prompt)
 
-    async def get_prompt(self, prompt_id: uuid.UUID, user: Optional[User] = None) -> Prompt | PromptRead:
-        """Get a prompt by ID. Redacts prompt_text if user is not the seller or a verified buyer."""
+    async def get_prompt(
+        self, prompt_id: uuid.UUID, user: User | None = None
+    ) -> Prompt | PromptRead:
+        """
+        Get a prompt by ID. Redacts prompt_text if user is not the seller
+        or a verified buyer.
+        """
         prompt = await self.repository.get_by_id(prompt_id)
         if not prompt:
             raise HTTPException(
@@ -71,17 +76,17 @@ class PromptService:
 
     async def search_prompts(
         self,
-        search_query: Optional[str] = None,
-        category_id: Optional[uuid.UUID] = None,
-        seller_id: Optional[uuid.UUID] = None,
+        search_query: str | None = None,
+        category_id: uuid.UUID | None = None,
+        seller_id: uuid.UUID | None = None,
         page: int = 1,
         limit: int = 12,
-    ) -> Tuple[List[PromptRead], int]:
+    ) -> tuple[list[PromptRead], int]:
         """Search prompts with pagination."""
         # Ensure page is at least 1, limit is reasonable
         page = max(1, page)
         limit = min(50, max(1, limit))
-        
+
         prompts, total = await self.repository.search(
             search_query=search_query,
             category_id=category_id,
@@ -89,35 +94,35 @@ class PromptService:
             page=page,
             limit=limit,
         )
-        
+
         # Always redact prompt_text in public search results using PromptRead models
         prompt_reads = []
         for prompt in prompts:
             pr = PromptRead.model_validate(prompt)
             pr.prompt_text = None
             prompt_reads.append(pr)
-            
+
         return prompt_reads, total
 
     async def get_seller_prompts(
         self,
         user: User,
-        search_query: Optional[str] = None,
-        category_id: Optional[uuid.UUID] = None,
-        status_filter: Optional[str] = None,
+        search_query: str | None = None,
+        category_id: uuid.UUID | None = None,
+        status_filter: str | None = None,
         page: int = 1,
         limit: int = 12,
-    ) -> Tuple[List[Prompt], int]:
+    ) -> tuple[list[Prompt], int]:
         """Get prompts for a seller."""
         if user.role != UserRole.seller:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only sellers can access this endpoint.",
             )
-            
+
         page = max(1, page)
         limit = min(50, max(1, limit))
-        
+
         return await self.repository.get_seller_prompts(
             seller_id=user.id,
             search_query=search_query,
@@ -137,7 +142,7 @@ class PromptService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Prompt not found.",
             )
-            
+
         if prompt.seller_id != user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -158,7 +163,7 @@ class PromptService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Prompt not found.",
             )
-            
+
         if prompt.seller_id != user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

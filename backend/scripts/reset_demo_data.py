@@ -1,7 +1,9 @@
-"""Script to reset development database and wipe marketplace transaction/prompt data while preserving users, categories, and settings."""
+"""
+Script to reset development database and wipe marketplace transaction/prompt data
+while preserving users, categories, and settings.
+"""
 
 import asyncio
-import shutil
 import sys
 from pathlib import Path
 
@@ -9,7 +11,6 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from sqlalchemy import delete, func, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import async_session_factory
 from app.models.category import Category
@@ -43,7 +44,9 @@ async def reset_demo_data() -> None:
         item_count = (await session.execute(select(func.count(OrderItem.id)))).scalar()
         payment_count = (await session.execute(select(func.count(Payment.id)))).scalar()
         user_count = (await session.execute(select(func.count(User.id)))).scalar()
-        category_count = (await session.execute(select(func.count(Category.id)))).scalar()
+        category_count = (
+            await session.execute(select(func.count(Category.id)))
+        ).scalar()
 
         print("\n--- Database Verification Counts ---")
         print(f"Prompts: {prompt_count}")

@@ -2,6 +2,7 @@
 
 from collections.abc import AsyncGenerator
 
+import sqlalchemy.pool as pool
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -11,9 +12,6 @@ from sqlalchemy.ext.asyncio import (
 from app.core.config import get_settings
 
 settings = get_settings()
-
-import sqlalchemy.pool as pool
-
 engine_kwargs = {
     "echo": settings.is_development,
     "pool_pre_ping": True,

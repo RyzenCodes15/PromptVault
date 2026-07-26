@@ -19,7 +19,9 @@ class CloudinaryService:
             secure=True,
         )
 
-    async def upload_image(self, file_path: str | bytes, folder: str = "prompts") -> dict:
+    async def upload_image(
+        self, file_path: str | bytes, folder: str = "prompts"
+    ) -> dict:
         """Upload an image to Cloudinary.
 
         Args:
@@ -63,6 +65,6 @@ class CloudinaryService:
         if height:
             options["height"] = height
             options["crop"] = "fill"
-        
+
         url, _ = cloudinary_url(public_id, **options)
         return url

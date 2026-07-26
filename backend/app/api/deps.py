@@ -1,7 +1,5 @@
 """API dependencies."""
 
-from typing import AsyncGenerator
-
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -19,12 +17,16 @@ settings = get_settings()
 security = HTTPBearer()
 
 
-def get_user_repository(session: AsyncSession = Depends(get_db_session)) -> UserRepository:
+def get_user_repository(
+    session: AsyncSession = Depends(get_db_session),
+) -> UserRepository:
     """Dependency to get UserRepository."""
     return UserRepository(session=session)
 
 
-def get_auth_service(user_repo: UserRepository = Depends(get_user_repository)) -> AuthService:
+def get_auth_service(
+    user_repo: UserRepository = Depends(get_user_repository),
+) -> AuthService:
     """Dependency to get AuthService."""
     return AuthService(user_repo=user_repo)
 
@@ -70,7 +72,7 @@ async def get_optional_user(
     """Dependency to optionally get the current authenticated user."""
     if not credentials:
         return None
-        
+
     token = credentials.credentials
     try:
         payload = decode_token(token)

@@ -1,7 +1,7 @@
 """Order repository layer."""
 
 import uuid
-from typing import List, Optional, Tuple
+
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -36,7 +36,7 @@ class OrderRepository:
         await self.session.refresh(payment)
         return payment
 
-    async def get_order_by_id(self, order_id: uuid.UUID) -> Optional[Order]:
+    async def get_order_by_id(self, order_id: uuid.UUID) -> Order | None:
         """Get an order by its ID with relationships loaded."""
         stmt = (
             select(Order)
@@ -51,7 +51,7 @@ class OrderRepository:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_order_by_checkout_session_id(self, session_id: str) -> Optional[Order]:
+    async def get_order_by_checkout_session_id(self, session_id: str) -> Order | None:
         """Get an order by its Stripe checkout session ID."""
         stmt = (
             select(Order)
@@ -64,7 +64,9 @@ class OrderRepository:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def has_purchased_prompt(self, buyer_id: uuid.UUID, prompt_id: uuid.UUID) -> bool:
+    async def has_purchased_prompt(
+        self, buyer_id: uuid.UUID, prompt_id: uuid.UUID
+    ) -> bool:
         """Check if a buyer has successfully completed an order for the given prompt."""
         stmt = (
             select(func.count(OrderItem.id))
@@ -81,7 +83,7 @@ class OrderRepository:
 
     async def get_buyer_purchases(
         self, buyer_id: uuid.UUID, page: int = 1, limit: int = 20
-    ) -> Tuple[List[OrderItem], int]:
+    ) -> tuple[list[OrderItem], int]:
         """Get paginated list of order items purchased by the buyer."""
         offset = (page - 1) * limit
 
@@ -115,7 +117,7 @@ class OrderRepository:
 
     async def get_seller_sales_stats(
         self, seller_id: uuid.UUID
-    ) -> Tuple[int, float, List[OrderItem]]:
+    ) -> tuple[int, float, list[OrderItem]]:
         """Get seller sales stats: sales count, total revenue, and recent items."""
         # Total sales count and revenue
         stats_stmt = (
@@ -124,7 +126,9 @@ class OrderRepository:
                 func.coalesce(func.sum(OrderItem.price_at_purchase), 0),
             )
             .join(Order, OrderItem.order_id == Order.id)
-            .where(OrderItem.seller_id == seller_id, Order.status == OrderStatus.completed)
+            .where(
+                OrderItem.seller_id == seller_id, Order.status == OrderStatus.completed
+            )
         )
         stats_result = await self.session.execute(stats_stmt)
         row = stats_result.one()
@@ -139,7 +143,9 @@ class OrderRepository:
                 selectinload(OrderItem.prompt),
                 selectinload(OrderItem.order).selectinload(Order.buyer),
             )
-            .where(OrderItem.seller_id == seller_id, Order.status == OrderStatus.completed)
+            .where(
+                OrderItem.seller_id == seller_id, Order.status == OrderStatus.completed
+            )
             .order_by(desc(OrderItem.created_at))
             .limit(10)
         )

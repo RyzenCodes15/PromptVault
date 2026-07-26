@@ -32,4 +32,3 @@ class Category(Base):
     )
 
     prompts = relationship("Prompt", back_populates="category", lazy="noload")
-

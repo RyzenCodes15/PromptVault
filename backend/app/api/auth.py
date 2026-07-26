@@ -17,7 +17,8 @@ async def register(
     user_in: UserCreate, auth_service: AuthService = Depends(get_auth_service)
 ) -> Any:
     """Register a new user."""
-    print(f"Registering: {user_in.email}"); return await auth_service.register_user(user_in)
+    print(f"Registering: {user_in.email}")
+    return await auth_service.register_user(user_in)
 
 
 @router.post("/login", response_model=Token)

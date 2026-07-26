@@ -1,6 +1,5 @@
 """Static file serving for locally uploaded images (development fallback)."""
 
-import os
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException

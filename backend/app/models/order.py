@@ -3,7 +3,6 @@
 import enum
 import uuid
 from datetime import datetime
-from typing import List, Optional
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Index, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID
@@ -37,7 +36,11 @@ class Order(Base):
     __tablename__ = "orders"
 
     __table_args__ = (
-        Index("ix_orders_stripe_checkout_session_id", "stripe_checkout_session_id", unique=True),
+        Index(
+            "ix_orders_stripe_checkout_session_id",
+            "stripe_checkout_session_id",
+            unique=True,
+        ),
         Index("ix_orders_buyer_id", "buyer_id"),
     )
 
@@ -53,7 +56,7 @@ class Order(Base):
         default=OrderStatus.pending,
     )
     total_amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
-    stripe_checkout_session_id: Mapped[Optional[str]] = mapped_column(
+    stripe_checkout_session_id: Mapped[str | None] = mapped_column(
         String(255), nullable=True
     )
 
@@ -69,8 +72,19 @@ class Order(Base):
 
     # Relationships
     buyer = relationship("User", foreign_keys=[buyer_id], lazy="selectin")
-    items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan", lazy="selectin")
-    payment = relationship("Payment", back_populates="order", uselist=False, cascade="all, delete-orphan", lazy="selectin")
+    items = relationship(
+        "OrderItem",
+        back_populates="order",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    payment = relationship(
+        "Payment",
+        back_populates="order",
+        uselist=False,
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
 
 
 class OrderItem(Base):
@@ -91,7 +105,9 @@ class OrderItem(Base):
         UUID(as_uuid=True), ForeignKey("orders.id", ondelete="CASCADE"), nullable=False
     )
     prompt_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("prompts.id", ondelete="RESTRICT"), nullable=False
+        UUID(as_uuid=True),
+        ForeignKey("prompts.id", ondelete="RESTRICT"),
+        nullable=False,
     )
     seller_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
@@ -114,7 +130,11 @@ class Payment(Base):
     __tablename__ = "payments"
 
     __table_args__ = (
-        Index("ix_payments_stripe_payment_intent_id", "stripe_payment_intent_id", unique=True),
+        Index(
+            "ix_payments_stripe_payment_intent_id",
+            "stripe_payment_intent_id",
+            unique=True,
+        ),
         Index("ix_payments_order_id", "order_id"),
     )
 
@@ -124,7 +144,7 @@ class Payment(Base):
     order_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("orders.id", ondelete="CASCADE"), nullable=False
     )
-    stripe_payment_intent_id: Mapped[Optional[str]] = mapped_column(
+    stripe_payment_intent_id: Mapped[str | None] = mapped_column(
         String(255), nullable=True
     )
     amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)

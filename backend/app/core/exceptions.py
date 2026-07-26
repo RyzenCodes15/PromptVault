@@ -9,9 +9,7 @@ from fastapi.responses import JSONResponse
 logger = logging.getLogger(__name__)
 
 
-async def http_exception_handler(
-    request: Request, exc: HTTPException
-) -> JSONResponse:
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
     """Handle FastAPI HTTPExceptions with consistent response format."""
     response = JSONResponse(
         status_code=exc.status_code,
@@ -29,9 +27,7 @@ async def http_exception_handler(
     return response
 
 
-async def unhandled_exception_handler(
-    request: Request, exc: Exception
-) -> JSONResponse:
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Handle unexpected exceptions with a generic error response."""
     logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
     response = JSONResponse(

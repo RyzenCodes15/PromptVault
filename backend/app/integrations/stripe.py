@@ -1,7 +1,8 @@
 """Stripe integration service abstraction."""
 
 import uuid
-from typing import Any, Dict, Optional
+from typing import Any
+
 import stripe
 from fastapi import HTTPException, status
 
@@ -31,8 +32,8 @@ class StripeService:
         cancel_url: str = "",
         product_name: str = "Prompt Purchase",
         product_description: str = "",
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Create a Stripe Checkout session for a one-time payment.
 
         Args:
@@ -49,7 +50,8 @@ class StripeService:
         """
         # Convert price to integer smallest units (e.g. paise/cents)
         import decimal
-        if isinstance(price_amount, (float, decimal.Decimal)):
+
+        if isinstance(price_amount, float | decimal.Decimal):
             unit_amount = int(round(float(price_amount) * 100))
         else:
             # If passed integer, assume it's already in paise/cents or check scale
@@ -60,13 +62,17 @@ class StripeService:
             mock_session_id = f"cs_test_mock_{uuid.uuid4().hex}"
             redirect_url = success_url
             if "{CHECKOUT_SESSION_ID}" in redirect_url:
-                redirect_url = redirect_url.replace("{CHECKOUT_SESSION_ID}", mock_session_id)
+                redirect_url = redirect_url.replace(
+                    "{CHECKOUT_SESSION_ID}", mock_session_id
+                )
             elif "?" in redirect_url:
                 redirect_url += f"&session_id={mock_session_id}"
             elif redirect_url:
                 redirect_url += f"?session_id={mock_session_id}"
             else:
-                redirect_url = f"/marketplace/orders/success?session_id={mock_session_id}"
+                redirect_url = (
+                    f"/marketplace/orders/success?session_id={mock_session_id}"
+                )
 
             return {
                 "id": mock_session_id,
@@ -84,7 +90,9 @@ class StripeService:
                             "currency": currency.lower(),
                             "product_data": {
                                 "name": product_name,
-                                "description": product_description[:250] if product_description else "",
+                                "description": product_description[:250]
+                                if product_description
+                                else "",
                             },
                             "unit_amount": unit_amount,
                         },
@@ -108,7 +116,7 @@ class StripeService:
                 detail=f"Stripe checkout error: {str(e)}",
             )
 
-    async def verify_webhook(self, payload: bytes, signature: str) -> Dict[str, Any]:
+    async def verify_webhook(self, payload: bytes, signature: str) -> dict[str, Any]:
         """Verify and parse a Stripe webhook event.
 
         Args:
@@ -121,6 +129,7 @@ class StripeService:
         if self._is_mock_mode():
             # In mock mode, try to parse JSON payload directly
             import json
+
             try:
                 data = json.loads(payload.decode("utf-8"))
                 return data

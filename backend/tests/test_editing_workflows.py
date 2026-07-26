@@ -1,6 +1,7 @@
 """Tests for user profile editing and prompt listing editing workflows."""
 
 import uuid
+
 import pytest
 from httpx import AsyncClient
 
@@ -45,13 +46,18 @@ async def test_edit_profile_and_edit_listing_workflows(client: AsyncClient):
     assert update_profile_res.status_code == 200
     updated_profile = update_profile_res.json()
     assert updated_profile["name"] == "Updated Seller Name"
-    assert updated_profile["bio"] == "Expert prompt engineer with 5+ years of experience."
+    assert (
+        updated_profile["bio"] == "Expert prompt engineer with 5+ years of experience."
+    )
 
     # Verify persistence on GET /api/users/me
     me_after_update = await client.get("/api/users/me", headers=seller_headers)
     assert me_after_update.status_code == 200
     assert me_after_update.json()["name"] == "Updated Seller Name"
-    assert me_after_update.json()["bio"] == "Expert prompt engineer with 5+ years of experience."
+    assert (
+        me_after_update.json()["bio"]
+        == "Expert prompt engineer with 5+ years of experience."
+    )
 
     # 3. Create a prompt listing as seller
     prompt_create = {
@@ -62,15 +68,19 @@ async def test_edit_profile_and_edit_listing_workflows(client: AsyncClient):
         "price": 19.99,
         "prompt_text": "INITIAL PROMPT TEXT...",
     }
-    create_res = await client.post("/api/prompts", json=prompt_create, headers=seller_headers)
+    create_res = await client.post(
+        "/api/prompts", json=prompt_create, headers=seller_headers
+    )
     assert create_res.status_code in (200, 201)
     prompt_id = create_res.json()["id"]
 
     # 4. Edit prompt listing (PUT /api/prompts/{prompt_id})
     prompt_update = {
         "title": "Updated Prompt Title",
-        "short_description": "Updated short description covering advanced capabilities.",
-        "full_description": "Updated full description with comprehensive details.",
+        "short_description": (
+            "Updated short description covering advanced capabilities."
+        ),
+        "full_description": ("Updated full description with comprehensive details."),
         "category_id": category_id,
         "price": 39.99,
         "prompt_text": "UPDATED PROMPT TEXT...",
@@ -112,7 +122,10 @@ async def test_edit_profile_and_edit_listing_workflows(client: AsyncClient):
 
     buyer_update_res = await client.put(
         "/api/users/me/profile",
-        json={"name": "Updated Buyer Name", "bio": "AI enthusiast and prompt collector."},
+        json={
+            "name": "Updated Buyer Name",
+            "bio": "AI enthusiast and prompt collector.",
+        },
         headers=buyer_headers,
     )
     assert buyer_update_res.status_code == 200

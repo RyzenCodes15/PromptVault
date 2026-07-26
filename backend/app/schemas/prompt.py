@@ -2,12 +2,12 @@
 
 import uuid
 from datetime import datetime
-from typing import Optional, List
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.prompt import PromptStatus
-from app.schemas.user import UserRead
 from app.schemas.category import CategoryRead
+from app.schemas.user import UserRead
 
 
 class PromptBase(BaseModel):
@@ -16,9 +16,9 @@ class PromptBase(BaseModel):
     full_description: str = Field(..., min_length=10)
     category_id: uuid.UUID
     price: float = Field(..., gt=0)
-    cover_image_url: Optional[str] = None
-    additional_images: Optional[List[str]] = Field(default=None)
-    prompt_text: Optional[str] = None
+    cover_image_url: str | None = None
+    additional_images: list[str] | None = Field(default=None)
+    prompt_text: str | None = None
 
 
 class PromptCreate(PromptBase):
@@ -26,15 +26,15 @@ class PromptCreate(PromptBase):
 
 
 class PromptUpdate(BaseModel):
-    title: Optional[str] = Field(None, min_length=3, max_length=255)
-    short_description: Optional[str] = Field(None, min_length=10, max_length=500)
-    full_description: Optional[str] = Field(None, min_length=10)
-    category_id: Optional[uuid.UUID] = None
-    price: Optional[float] = Field(None, gt=0)
-    cover_image_url: Optional[str] = None
-    additional_images: Optional[List[str]] = Field(default=None)
-    prompt_text: Optional[str] = None
-    status: Optional[PromptStatus] = None
+    title: str | None = Field(None, min_length=3, max_length=255)
+    short_description: str | None = Field(None, min_length=10, max_length=500)
+    full_description: str | None = Field(None, min_length=10)
+    category_id: uuid.UUID | None = None
+    price: float | None = Field(None, gt=0)
+    cover_image_url: str | None = None
+    additional_images: list[str] | None = Field(default=None)
+    prompt_text: str | None = None
+    status: PromptStatus | None = None
 
 
 class PromptRead(PromptBase):
@@ -43,8 +43,8 @@ class PromptRead(PromptBase):
     status: PromptStatus
     created_at: datetime
     updated_at: datetime
-    seller: Optional[UserRead] = None
-    category: Optional[CategoryRead] = None
+    seller: UserRead | None = None
+    category: CategoryRead | None = None
     is_purchased: bool = False
     is_owner: bool = False
 
@@ -52,7 +52,7 @@ class PromptRead(PromptBase):
 
 
 class PaginatedPromptRead(BaseModel):
-    items: List[PromptRead]
+    items: list[PromptRead]
     total: int
     page: int
     limit: int
