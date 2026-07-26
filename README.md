@@ -2,7 +2,7 @@
 
 > **The Premier AI Prompt Marketplace** — Buy, sell, and discover high-converting, expertly engineered AI prompts for image and text generation models.
 
-PromptVault is a full-stack, production-grade SaaS platform built for prompt engineers, AI artists, and digital creators to monetize their expertise. Engineered from the ground up for high availability, security, and developer ergonomics, PromptVault combines a sleek Next.js 15 interface with a high-concurrency asynchronous FastAPI backend. The platform ensures strict content protection, real-time payment verification via Stripe Checkout and webhooks, and scalable asset delivery through Cloudinary.
+PromptVault is a full-stack, production-grade SaaS platform built for prompt engineers, AI artists, and digital creators to monetize their expertise. Engineered from the ground up for high availability, security, and developer ergonomics, PromptVault combines a sleek Next.js interface with a high-concurrency asynchronous FastAPI backend. The platform ensures strict content protection, real-time payment verification via Stripe Checkout and webhooks, and scalable asset delivery through Cloudinary.
 
 ---
 
@@ -363,19 +363,5 @@ PromptVault is designed around defense-in-depth principles:
 
 ---
 
-## License
 
-This project is open-source and available under the **[MIT License](LICENSE)**.
 
----
-
-## Author
-
-**PromptVault Engineering Team**
-
-* **GitHub:** [@your-username](https://github.com/your-username)
-* **LinkedIn:** [Your Professional Profile](https://linkedin.com/in/your-profile)
-* **Portfolio:** [https://your-portfolio.dev](https://your-portfolio.dev)
-
----
-*Built with ❤️ using Next.js 15, FastAPI, PostgreSQL, and Stripe.*
