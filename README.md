@@ -28,7 +28,7 @@ PromptVault provides a comprehensive, end-to-end marketplace experience tailored
 
 ## Tech Stack
 
-PromptVault leverages a modern, type-safe, and highly performant architecture across every layer:
+PromptVault leverages a modern, type-safe and highly performant architecture across every layer:
 
 | Layer | Technology | Description |
 | :--- | :--- | :--- |
